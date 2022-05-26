@@ -6,7 +6,7 @@
 
 
 
-#### Before Build
+### Before Build
 
 ```shell
 source /home/janux/Vivado/2021.2/Vitis/2021.2/settings64.sh
@@ -14,9 +14,9 @@ source /opt/xilinx/xrt/setup.sh
 ## PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
 ```
 
+<hr />
 
-
-#### To Build a Application
+### To Build a Application
 
 ***Hardware Emulation***
 
@@ -36,9 +36,9 @@ make all TARGER=sw_emu PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
 make all TARGER=hw PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
 ```
 
+<hr />
 
-
-#### To Run a Application on Emulation
+### To Run a Application on Emulation
 
 ***Hardware Emulation***
 
@@ -52,9 +52,9 @@ make run TARGER=hw_emu PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
 make run TARGER=sw_emu PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
 ```
 
+<hr />
 
-
-#### To Run a Application on Hardware
+### To Run a Application on Hardware
 
 ```shell
 ./executableFile <.xcibin>
