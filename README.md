@@ -5,6 +5,7 @@
 - Command Line
 - Develop and build in janux03
 - Deploy in janux00
+- Detailed programming notes can be viewed: https://ffggssjj.notion.site/b50fc812d8f14ed2bd1ad5cd817b1984?v=484a0e8656714bc8b7a610f3c4bac04d
 
 
 
