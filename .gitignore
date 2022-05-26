@@ -1,0 +1,9 @@
+## MacOS Files
+.DS_Store
+
+## Binary files
+*.bin
+
+## Folders
+.run/
+.ipcache/
