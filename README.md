@@ -2,16 +2,22 @@
 
 # VitisDevelopmentResearch
 
-- Command Line 
+- Command Line
+- Develop and build in janux03
+- Deploy in janux00
 
 
 
 ### Before Build
 
 ```shell
+## In janux03 ##
+## PLATFORM = xilinx_u2_gen3x4_xdma_gc_2_202110_1
 source /home/janux/Vivado/2021.2/Vitis/2021.2/settings64.sh
 source /opt/xilinx/xrt/setup.sh
-## PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
+
+## In janux00 ##
+source /opt/xilinx/xrt/setup.sh
 ```
 
 <hr />
@@ -58,6 +64,7 @@ make run TARGER=sw_emu PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
 
 ```shell
 ## Make sure the environment is sourced ##
+## In janux00 ##
 ./executableFile <.xcibin>
 ```
 
