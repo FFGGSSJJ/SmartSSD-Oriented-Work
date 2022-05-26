@@ -57,6 +57,7 @@ make run TARGER=sw_emu PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
 ### To Run a Application on Hardware
 
 ```shell
+## Make sure the environment is sourced ##
 ./executableFile <.xcibin>
 ```
 
