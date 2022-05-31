@@ -1,0 +1,35 @@
+make --dry-run --always-make --keep-going --print-directory
+make: Entering directory `/Users/fuguanshujie/Desktop/ZJUI/5_2022SUMMER/VitisDevelopmentResearch/simple_vadd'
+echo "Makefile Usage:"
+echo "  make all TARGET=<sw_emu/hw_emu/hw> PLATFORM=<FPGA platform> HOST_ARCH=<aarch32/aarch64/x86> EDGE_COMMON_SW=<rootfs and kernel image path>"
+echo "      Command to generate the design for specified Target and Shell."
+echo ""
+echo "  make clean "
+echo "      Command to remove the generated non-hardware files."
+echo ""
+echo "  make cleanall"
+echo "      Command to remove all the generated files."
+echo ""
+echo "  make test PLATFORM=<FPGA platform>"
+echo "      Command to run the application. This is same as 'run' target but does not have any makefile dependency."
+echo ""
+echo "  make sd_card TARGET=<sw_emu/hw_emu/hw> PLATFORM=<FPGA platform> HOST_ARCH=<aarch32/aarch64/x86> EDGE_COMMON_SW=<rootfs and kernel image path>"
+echo "      Command to prepare sd_card files."
+echo ""
+echo "  make run TARGET=<sw_emu/hw_emu/hw> PLATFORM=<FPGA platform> HOST_ARCH=<aarch32/aarch64/x86> EDGE_COMMON_SW=<rootfs and kernel image path>"
+echo "      Command to run application in emulation."
+echo ""
+echo "  make build TARGET=<sw_emu/hw_emu/hw> PLATFORM=<FPGA platform> HOST_ARCH=<aarch32/aarch64/x86> EDGE_COMMON_SW=<rootfs and kernel image path>"
+echo "      Command to build xclbin application."
+echo ""
+echo "  make host HOST_ARCH=<aarch32/aarch64/x86> EDGE_COMMON_SW=<rootfs and kernel image path>"
+echo "      Command to build host application."
+echo "      By default, HOST_ARCH=x86. HOST_ARCH and EDGE_COMMON_SW are required for SoC shells. Please download and use the pre-built image from - "
+echo "      https://www.xilinx.com/support/download/index.html/content/xilinx/en/downloadNav/embedded-platforms.html"
+echo ""
+make: Leaving directory `/Users/fuguanshujie/Desktop/ZJUI/5_2022SUMMER/VitisDevelopmentResearch/simple_vadd'
+ 
+Makefile:88: /Users/fuguanshujie/Desktop/ZJUI/5_2022SUMMER/VitisDevelopmentResearch/simple_vadd/Makefile/common/includes/opencl/opencl.mk: Not a directory
+make: *** No rule to make target `/Users/fuguanshujie/Desktop/ZJUI/5_2022SUMMER/VitisDevelopmentResearch/simple_vadd/Makefile/common/includes/opencl/opencl.mk'.
+make: Failed to remake makefile `/Users/fuguanshujie/Desktop/ZJUI/5_2022SUMMER/VitisDevelopmentResearch/simple_vadd/Makefile/common/includes/opencl/opencl.mk'.
+
