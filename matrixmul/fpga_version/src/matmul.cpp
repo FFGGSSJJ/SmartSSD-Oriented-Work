@@ -35,6 +35,7 @@ static void loadcol(int32_t* in, hls::stream<int32_t>& inStream, int colid, int 
 
 static void loadin(int32_t* in, hls::stream<int32_t>& inStream, int row, int col)
 {
+    /* load all matrix into the stream */
     for (int i = 0; i < row; i++) {
         for (int j = 0; j < col; j++) {
             inStream << in[i*row + j];
