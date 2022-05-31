@@ -22,6 +22,7 @@
 /* namespace usage */
 using std::vector;
 using std::cout;
+using std::string;
 
 /* Macros */
 #define SSD2FPGA    0
@@ -58,4 +59,47 @@ int p2p_Matrix( int& nvmeFd,
 
     /* p2p opencl extention */
     cl_mem_ext_ptr_t ext = {XCL_MEM_EXT_P2P_BUFFER, nullptr, 0};
+}
+
+
+
+
+
+int main(int argc, char** argv)
+{
+    // Command Line Parser
+    sda::utils::CmdLineParser parser;
+
+    // Switches
+    //**************//"<Full Arg>",  "<Short Arg>", "<Description>", "<Default>"
+    parser.addSwitch("--xclbin_file", "-x", "input binary file string", "");
+    parser.addSwitch("--file_path", "-p", "file path string", "");
+    parser.addSwitch("--input_file", "-f", "input file string", "");
+    parser.addSwitch("--device", "-d", "device id", "0");
+    parser.parse(argc, argv);
+
+    // Read settings
+    auto binaryFile = parser.value("xclbin_file");
+    string filepath = parser.value("file_path");
+    string dev_id = parser.value("device");
+    string filename;
+
+    if (argc < 5) {
+        parser.printHelp();
+        return EXIT_FAILURE;
+    }
+
+    if (filepath.empty()) {
+        cout << "\nWARNING: As file path is not provided using -p option, going with -f option which is local "
+                "file testing. Please use -p option, if looking for actual p2p operation on NVMe drive.\n";
+        filename = parser.value("input_file");
+    } else {
+        cout << "\nWARNING: Ignoring -f option when -p options is set. -p has high precedence over -f.\n";
+        filename = filepath;
+    }
+
+    /* set kernel */
+    cl_int err;
+    cl::Context context;
+    cl::CommandQueue cmdq;
 }
