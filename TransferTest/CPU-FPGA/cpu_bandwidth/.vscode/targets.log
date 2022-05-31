@@ -12,7 +12,7 @@ Makefile:76: /Users/fuguanshujie/Desktop/ZJUI/5_2022SUMMER/VitisDevelopmentResea
 make: *** No rule to make target `/Users/fuguanshujie/Desktop/ZJUI/5_2022SUMMER/VitisDevelopmentResearch/TransferTest/CPU-FPGA/cpu_bandwidth/Makefile/common/includes/opencl/opencl.mk'.  Stop.
 
 
-# Make data base, printed on Tue May 31 14:14:02 2022
+# Make data base, printed on Tue May 31 14:22:56 2022
 
 # Variables
 
@@ -33,6 +33,7 @@ TARGET := hw
 # automatic
 @D = $(patsubst %/,%,$(dir $@))
 # automatic
+ 
 @F = $(notdir $@)
 # makefile (from `Makefile', line 70)
 RESULT_STRING = TEST PASSED
@@ -45,7 +46,7 @@ SHELL = /bin/sh
 # makefile (from `utils.mk', line 82)
 RM = rm -f
 # makefile (from `Makefile', line 48)
-COMMON_REPO = $(shell bash -c 'export MK_PATH=$(MK_PATH); echo $${MK_PATH%host/p2p_bandwidth/*}')
+COMMON_REPO = $(shell bash -c 'export MK_PATH=$(MK_PATH); echo $${MK_PATH%host/cf_bandwidth/*}')
 # environment
 VSCODE_NLS_CONFIG = {"locale":"en-us","availableLanguages":{},"_languagePackSupport":true}
 # environment
@@ -191,7 +192,7 @@ HOST_ARCH := x86
 # automatic
 <F = $(notdir $<)
 # makefile (from `Makefile', line 104)
-EXECUTABLE = ./p2p_bandwidth
+EXECUTABLE = ./cf_bandwidth
 # makefile (from `Makefile', line 54)
 SYSROOT := 
 # environment
@@ -224,6 +225,7 @@ VSCODE_PID = 12320
 # No pattern-specific variable values.
 
 # Directories
+ 
 
 # . (device 16777220, inode 55198548): 13 files, no impossibilities.
 
@@ -243,14 +245,6 @@ VSCODE_PID = 12320
 # variable set hash-table stats:
 # Load=0/32=0%, Rehash=0, Collisions=0/0=0%
 
-p2p_bandwidth: /Users/fuguanshujie/Desktop/ZJUI/5_2022SUMMER/VitisDevelopmentResearch/TransferTest/CPU-FPGA/cpu_bandwidth/Makefile/common/includes/xcl2/xcl2.cpp /Users/fuguanshujie/Desktop/ZJUI/5_2022SUMMER/VitisDevelopmentResearch/TransferTest/CPU-FPGA/cpu_bandwidth/Makefile/common/includes/cmdparser/cmdlineparser.cpp /Users/fuguanshujie/Desktop/ZJUI/5_2022SUMMER/VitisDevelopmentResearch/TransferTest/CPU-FPGA/cpu_bandwidth/Makefile/common/includes/logger/logger.cpp src/host.cpp | check-xrt
-#  Implicit rule search has not been done.
-#  Modification time never checked.
-#  File has not been updated.
-#  commands to execute (from `Makefile', line 137):
-	$(CXX) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
-	
-
 exe:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
@@ -265,7 +259,6 @@ README.rst: description.json
 #  Modification time never checked.
 #  File has not been updated.
 #  commands to execute (from `utils.mk', line 90):
- 
 	$(XF_PROJ_ROOT)/common/utility/readme_gen/readme_gen.py description.json
 	
 
@@ -278,7 +271,7 @@ config.mk:
 # variable set hash-table stats:
 # Load=0/32=0%, Rehash=0, Collisions=0/0=0%
 
-all: check-platform check-device check-vitis p2p_bandwidth build_dir.hw./bandwidth.xclbin emconfig
+all: check-platform check-device check-vitis cf_bandwidth build_dir.hw./bandwidth.xclbin emconfig
 #  Phony target (prerequisite of .PHONY).
 #  Command-line target.
 #  Implicit rule search has not been done.
@@ -316,7 +309,7 @@ check-vitis:
 # Not a target:
 Makefile:
 #  Implicit rule search has not been done.
-#  Last modified 2022-04-18 03:06:16
+#  Last modified 2022-05-31 14:22:27
 #  File has not been updated.
 
 # Not a target:
@@ -325,7 +318,7 @@ src/bandwidth.cpp:
 #  Modification time never checked.
 #  File has not been updated.
 
-test: p2p_bandwidth
+test: cf_bandwidth
 #  Phony target (prerequisite of .PHONY).
 #  Implicit rule search has not been done.
 #  File does not exist.
@@ -380,6 +373,7 @@ help::
 #  File does not exist.
 #  File has not been updated.
 #  commands to execute (from `Makefile', line 22):
+ 
 	$(ECHO) "Makefile Usage:"
 	$(ECHO) "  make all TARGET=<sw_emu/hw_emu/hw> PLATFORM=<FPGA platform>"
 	$(ECHO) "      Command to generate the design for specified Target and Shell."
@@ -449,13 +443,21 @@ docs: README.rst
 #  File does not exist.
 #  File has not been updated.
 
+cf_bandwidth: /Users/fuguanshujie/Desktop/ZJUI/5_2022SUMMER/VitisDevelopmentResearch/TransferTest/CPU-FPGA/cpu_bandwidth/Makefile/common/includes/xcl2/xcl2.cpp /Users/fuguanshujie/Desktop/ZJUI/5_2022SUMMER/VitisDevelopmentResearch/TransferTest/CPU-FPGA/cpu_bandwidth/Makefile/common/includes/cmdparser/cmdlineparser.cpp /Users/fuguanshujie/Desktop/ZJUI/5_2022SUMMER/VitisDevelopmentResearch/TransferTest/CPU-FPGA/cpu_bandwidth/Makefile/common/includes/logger/logger.cpp src/host.cpp | check-xrt
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 137):
+	$(CXX) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
+	
+
 # Not a target:
 utils.mk:
 #  Implicit rule search has not been done.
 #  Last modified 2022-04-18 03:06:16
 #  File has not been updated.
 
-host: p2p_bandwidth
+host: cf_bandwidth
 #  Phony target (prerequisite of .PHONY).
 #  Implicit rule search has not been done.
 #  File does not exist.
@@ -514,7 +516,6 @@ check-device:
 	done ;\
 	for dev in $(PLATFORM_BLOCKLIST); \
 	do if [[ $$(echo $(PLATFORM) | grep $$dev) != "" ]]; \
- 
 	then inblocklist=True; fi; \
 	done ;\
 	if [[ $$inblocklist == True ]]; \
@@ -550,6 +551,6 @@ description.json:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 3919 / max = 3919 / min = 3919 / avg = 3919
 
-# Finished Make data base on Tue May 31 14:14:02 2022
+# Finished Make data base on Tue May 31 14:22:56 2022
 
  

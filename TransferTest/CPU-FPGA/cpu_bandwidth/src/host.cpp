@@ -29,7 +29,7 @@ size_t max_buffer = 16 * 1024 * 1024;
 size_t min_buffer = 4 * 1024;
 size_t max_size = 128 * 1024 * 1024; // 128MB
 
-int p2p_host_to_ssd(int& nvmeFd,
+int cpu_to_fpga(int& nvmeFd,
                     cl::Context context,
                     cl::CommandQueue q,
                     cl::Program program,
@@ -69,7 +69,7 @@ int p2p_host_to_ssd(int& nvmeFd,
     OCL_CHECK(err, err = q.enqueueTask(krnl));
     q.finish();
 
-    std::cout << "\nMap P2P device buffers to host access pointers\n" << std::endl;
+    std::cout << "\nMap FPGA buffers to host access pointers\n" << std::endl;
     void* p2pPtr = q.enqueueMapBuffer(p2pBo,                      // buffer
                                       CL_TRUE,                    // blocking call
                                       CL_MAP_WRITE | CL_MAP_READ, // Indicates we will be writing
@@ -79,7 +79,7 @@ int p2p_host_to_ssd(int& nvmeFd,
                                       &err); // error code
     q.finish();
 
-    std::cout << "Start P2P Write of various buffer sizes from SSD to device buffers\n" << std::endl;
+    std::cout << "Start Write of various buffer sizes from CPU to FPGA buffers\n" << std::endl;
     for (size_t bufsize = min_buffer; bufsize <= vector_size_bytes; bufsize *= 2) {
         std::string size_str = xcl::convert_size(bufsize);
 
@@ -107,7 +107,7 @@ int p2p_host_to_ssd(int& nvmeFd,
     return 0;
 }
 
-void p2p_ssd_to_host(int& nvmeFd,
+void fpga_to_cpu(int& nvmeFd,
                      cl::Context context,
                      cl::CommandQueue q,
                      cl::Program program,
@@ -132,7 +132,7 @@ void p2p_ssd_to_host(int& nvmeFd,
                                        &err); // error code
     q.finish();
 
-    std::cout << "Start P2P Read of various buffer sizes from device buffers to SSD\n" << std::endl;
+    std::cout << "Start Read of various buffer sizes from FPGA buffers to CPU\n" << std::endl;
     for (size_t bufsize = min_buffer; bufsize <= vector_size_bytes; bufsize *= 2) {
         std::string size_str = xcl::convert_size(bufsize);
 
@@ -251,7 +251,7 @@ int main(int argc, char** argv) {
 
     // P2P transfer from host to SSD
     std::cout << "############################################################\n";
-    std::cout << "                  Reading data from SSD                       \n";
+    std::cout << "                  Transfer from CPU to FPGA                       \n";
     std::cout << "############################################################\n";
     // Get access to the NVMe SSD.
     nvmeFd = open(filename.c_str(), O_RDWR | O_DIRECT);
@@ -259,15 +259,15 @@ int main(int argc, char** argv) {
         std::cerr << "ERROR: open " << filename << "failed: " << std::endl;
         return EXIT_FAILURE;
     }
-    std::cout << "INFO: Successfully opened NVME SSD " << filename << std::endl;
+    std::cout << "INFO: Successfully opened Host file " << filename << std::endl;
     int ret = 0;
-    ret = p2p_host_to_ssd(nvmeFd, context, q, program, source_input_A);
+    ret = cpu_to_fpga(nvmeFd, context, q, program, source_input_A);
     (void)close(nvmeFd);
     if (ret != 0) return EXIT_FAILURE;
 
     // P2P transfer from SSD to host
     std::cout << "############################################################\n";
-    std::cout << "                  Writing data to SSD                       \n";
+    std::cout << "                  Transfer from FPGA to CPU                        \n";
     std::cout << "############################################################\n";
 
     nvmeFd = open(filename.c_str(), O_RDWR | O_DIRECT);
@@ -275,9 +275,9 @@ int main(int argc, char** argv) {
         std::cerr << "ERROR: open " << filename << "failed: " << std::endl;
         return EXIT_FAILURE;
     }
-    std::cout << "INFO: Successfully opened NVME SSD " << filename << std::endl;
+    std::cout << "INFO: Successfully opened Host file " << filename << std::endl;
 
-    p2p_ssd_to_host(nvmeFd, context, q, program, &source_input_A);
+    fpga_to_cpu(nvmeFd, context, q, program, &source_input_A);
 
     (void)close(nvmeFd);
 
