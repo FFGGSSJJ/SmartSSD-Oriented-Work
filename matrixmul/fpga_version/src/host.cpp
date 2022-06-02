@@ -40,12 +40,12 @@ size_t max_buffer = 16 * 1024 * 1024;
 size_t min_buffer = 4 * 1024;
 size_t max_size = 128 * 1024 * 1024; // 128MB
                                                                               
-#define OCL_CHECK(error, call)                                                                   \
-    call;                                                                                        \
-    if (error != CL_SUCCESS) {                                                                   \
-        printf("%s:%d Error calling " #call ", error code is: %d\n", __FILE__, __LINE__, error); \
-        exit(EXIT_FAILURE);                                                                      \
-    }
+// #define OCL_CHECK(error, call)                                                                   \
+//     call;                                                                                        \
+//     if (error != CL_SUCCESS) {                                                                   \
+//         printf("%s:%d Error calling " #call ", error code is: %d\n", __FILE__, __LINE__, error); \
+//         exit(EXIT_FAILURE);                                                                      \
+//     }
 
 
 
@@ -221,7 +221,7 @@ int main(int argc, char** argv)
 
     /* Creating Context and Command Queue for selected Device */
     OCL_CHECK(err, context = cl::Context(device, nullptr, nullptr, nullptr, &err));
-    OCL_CHECK(err, q = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &err));
+    OCL_CHECK(err, cmdq = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &err));
 
     /* Program the .xclbin file into FPGA Device, i.e. Create the program */
     cout << "Trying to program device[" << dev_id << "]: " << device.getInfo<CL_DEVICE_NAME>() << endl;
