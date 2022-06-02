@@ -1,17 +1,11 @@
 make --dry-run --keep-going --print-directory
 make: Entering directory `/Users/fuguanshujie/Desktop/ZJUI/5_2022SUMMER/VitisDevelopmentResearch/TransferTest/CPU-FPGA/cpu_bandwidth'
- 
-Makefile:76: /Users/fuguanshujie/Desktop/ZJUI/5_2022SUMMER/VitisDevelopmentResearch/TransferTest/CPU-FPGA/cpu_bandwidth/Makefile/common/includes/opencl/opencl.mk: Not a directory
-
-make: *** No rule to make target `/Users/fuguanshujie/Desktop/ZJUI/5_2022SUMMER/VitisDevelopmentResearch/TransferTest/CPU-FPGA/cpu_bandwidth/Makefile/common/includes/opencl/opencl.mk'.
-
-make: Failed to remake makefile `/Users/fuguanshujie/Desktop/ZJUI/5_2022SUMMER/VitisDevelopmentResearch/TransferTest/CPU-FPGA/cpu_bandwidth/Makefile/common/includes/opencl/opencl.mk'.
-
 echo "Makefile Usage:"
 echo "  make all TARGET=<sw_emu/hw_emu/hw> PLATFORM=<FPGA platform>"
 echo "      Command to generate the design for specified Target and Shell."
 echo ""
 echo "  make clean "
+ 
 echo "      Command to remove the generated non-hardware files."
 echo ""
 echo "  make cleanall"

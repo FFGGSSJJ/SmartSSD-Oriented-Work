@@ -31,7 +31,7 @@ static void loadcol(int32_t* in, hls::stream<int32_t>& inStream, int colid, int 
         inStream << in[i*row + colid];
     }
 }
-#endif
+
 
 static void loadin(int32_t* in, hls::stream<int32_t>& inStream, int row, int col)
 {
@@ -42,12 +42,14 @@ static void loadin(int32_t* in, hls::stream<int32_t>& inStream, int row, int col
         }
     }
 }
+#endif
 
 
 
 extern "C" {
 
-void matmul(int* matA, int* matB, int* outC){
+void matmul(int* matA, int* matB, int* outC, int row, int col)
+{
     return;
 }
 
