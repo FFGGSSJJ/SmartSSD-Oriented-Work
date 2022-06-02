@@ -59,7 +59,7 @@ size_t max_size = 128 * 1024 * 1024; // 128MB
  * @param program 
  * @return int 
  */
-int p2p_MatrixMul( int& nvmeFd,
+int p2p_MatrixMul(int& nvmeFd,
                 int direction,
                 cl::Context context,
                 cl::CommandQueue cmdq,
@@ -131,7 +131,7 @@ int p2p_MatrixMul( int& nvmeFd,
 
     /* P2P transfer to load the result into SSD */
     cout << "Trying to p2p transfer Matrix from FPGA into SSD\n";
-
+    return 1;
 }
 
 
@@ -236,8 +236,8 @@ int main(int argc, char** argv)
     int nvmefd = open(filename.c_str(), O_RDWR | O_DIRECT);
     //int resfd = open("result", O_RDWR | O_DIRECT);
     /* Proceed for matrix multiplication */
-    p2p_MatrixMul(&nvmefd, SSD2FPGA, context, cmdq, program);
-    (void)close(nvmeFd);
+    p2p_MatrixMul(nvmefd, SSD2FPGA, context, cmdq, program);
+    (void)close(nvmefd);
 
     cout << "TEST PASSED" << std::endl;
     return EXIT_SUCCESS;    
