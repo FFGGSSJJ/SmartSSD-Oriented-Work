@@ -72,14 +72,14 @@ int p2p_MatrixMul(int& nvmeFd,
     cl_mem_ext_ptr_t p2pext = {XCL_MEM_EXT_P2P_BUFFER, nullptr, 0};
 
     /* Allocate global buffers in the global memory of device, make it p2p ext buffer */
-    OCL_CHECK(err, cl::Buffer matA(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, SIZE, &p2pext, &err));
-    OCL_CHECK(err, cl::Buffer matB(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, SIZE, &p2pext, &err));
-    OCL_CHECK(err, cl::Buffer matC(context, CL_MEM_WRITE_ONLY | CL_MEM_EXT_PTR_XILINX, SIZE, &p2pext, &err));
+    cl::Buffer matA(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, (size_t)SIZE, &p2pext, &err);
+    cl::Buffer matB(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, (size_t)SIZE, &p2pext, &err);
+    cl::Buffer matC(context, CL_MEM_WRITE_ONLY | CL_MEM_EXT_PTR_XILINX, (size_t)SIZE, &p2pext, &err);
 
     /* Map allocated p2p global buffers into host */
-    int16_t* matAptr = (int16_t*)cmdq.enqueueMapBuffer(matA, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, SIZE, nullptr, nullptr, &err);
-    int16_t* matBptr = (int16_t*)cmdq.enqueueMapBuffer(matB, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, SIZE, nullptr, nullptr, &err);
-    int16_t* matCptr = (int16_t*)cmdq.enqueueMapBuffer(matC, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, SIZE, nullptr, nullptr, &err);
+    int16_t* matAptr = (int16_t*)cmdq.enqueueMapBuffer(matA, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
+    int16_t* matBptr = (int16_t*)cmdq.enqueueMapBuffer(matB, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
+    int16_t* matCptr = (int16_t*)cmdq.enqueueMapBuffer(matC, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
     cmdq.finish();
 
     /* Initialize the kernel */
@@ -91,7 +91,7 @@ int p2p_MatrixMul(int& nvmeFd,
     int iter = (size_t)SIZE/bufsize;
     string size_str = xcl::convert_size(bufsize);
 
-    std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
+    std::chrono::high_resolution_clock::time_point p2pStart1 = std::chrono::high_resolution_clock::now();
     /* Transfer matrix A */
     for (int i = 0; i < iter; i++) {
         ret = pread(nvmeFd, (void*)matAptr, bufsize, 0);
@@ -108,10 +108,10 @@ int p2p_MatrixMul(int& nvmeFd,
             return EXIT_FAILURE;
         }
     }
-    std::chrono::high_resolution_clock::time_point p2pEnd = std::chrono::high_resolution_clock::now();
+    std::chrono::high_resolution_clock::time_point p2pEnd1 = std::chrono::high_resolution_clock::now();
 
     /* Calculate the transfer time and bandwidth */
-    cl_ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart).count();
+    cl_ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd1 - p2pStart1).count();
     double dnsduration = (double)p2pTime;
     double dsduration = dnsduration / ((double)1000000);
     double gbpersec = (2 * iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
@@ -131,7 +131,26 @@ int p2p_MatrixMul(int& nvmeFd,
 
     /* P2P transfer to load the result into SSD */
     cout << "Trying to p2p transfer Matrix from FPGA into SSD\n";
-    return 1;
+    std::chrono::high_resolution_clock::time_point p2pStart2 = std::chrono::high_resolution_clock::now();
+    /* Transfer matrix C */
+    for (int i = 0; i < iter; i++) {
+        ret = pwrite(nvmeFd, (void*)matCptr, bufsize, 0);
+        if (ret == -1) {
+            cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << std::endl;
+            return EXIT_FAILURE;
+        }
+    }
+    std::chrono::high_resolution_clock::time_point p2pEnd2 = std::chrono::high_resolution_clock::now();
+
+    /* Calculate the transfer time and bandwidth */
+    cl_ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd2 - p2pStart2).count();
+    dnsduration = (double)p2pTime;
+    dsduration = dnsduration / ((double)1000000);
+    gbpersec = (2 * iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
+    std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
+            << std::fixed << gbpersec << "GB/s\n";
+
+    return EXIT_SUCCESS;
 }
 
 
@@ -235,8 +254,10 @@ int main(int argc, char** argv)
     /* Open file from the SSD */
     int nvmefd = open(filename.c_str(), O_RDWR | O_DIRECT);
     //int resfd = open("result", O_RDWR | O_DIRECT);
+    
     /* Proceed for matrix multiplication */
-    p2p_MatrixMul(nvmefd, SSD2FPGA, context, cmdq, program);
+    if(EXIT_FAILURE == p2p_MatrixMul(nvmefd, SSD2FPGA, context, cmdq, program))
+        return EXIT_FAILURE;
     (void)close(nvmefd);
 
     cout << "TEST PASSED" << std::endl;
