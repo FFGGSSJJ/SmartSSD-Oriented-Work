@@ -35,7 +35,7 @@ using std::endl;
 #define BytesPerMB  1024*1024
 #define SIZE        ROW*COL*BytesPerNum
 
-/* Global */
+/* Global var for buffer size */
 size_t max_buffer = 16 * 1024 * 1024;
 size_t min_buffer = 4 * 1024;
 size_t max_size = 128 * 1024 * 1024; // 128MB
@@ -53,14 +53,14 @@ size_t max_size = 128 * 1024 * 1024; // 128MB
  * @brief p2p_MatrixMul
  * 
  * @param nvmeFd 
- * @param direction 
+ * @param resFd 
  * @param context 
  * @param cmdq 
  * @param program 
  * @return int 
  */
 int p2p_MatrixMul(int& nvmeFd,
-                int direction,
+                int& resFd,
                 cl::Context context,
                 cl::CommandQueue cmdq,
                 cl::Program program)
@@ -88,7 +88,7 @@ int p2p_MatrixMul(int& nvmeFd,
     /* P2P transfer to load Matrix into FPGA */
     cout << "Trying to p2p transfer Matrix from SSD into FPGA\n";
     size_t bufsize = min_buffer;
-    int iter = (size_t)SIZE/bufsize;
+    int iter = (size_t)SIZE/bufsize + 1;
     string size_str = xcl::convert_size(bufsize);
 
     std::chrono::high_resolution_clock::time_point p2pStart1 = std::chrono::high_resolution_clock::now();
@@ -126,6 +126,7 @@ int p2p_MatrixMul(int& nvmeFd,
     OCL_CHECK(err, err = kernel.setArg(4, COL));
 
     /* Launch the Matrix Multiplication kernel */
+    cout << "\nLaunch the Matrix Multiplication kernel\n";
     OCL_CHECK(err, err = cmdq.enqueueTask(kernel));
     cmdq.finish();
 
@@ -134,7 +135,7 @@ int p2p_MatrixMul(int& nvmeFd,
     std::chrono::high_resolution_clock::time_point p2pStart2 = std::chrono::high_resolution_clock::now();
     /* Transfer matrix C */
     for (int i = 0; i < iter; i++) {
-        ret = pwrite(nvmeFd, (void*)matCptr, bufsize, 0);
+        ret = pwrite(resFd, (void*)matCptr, bufsize, 0);
         if (ret == -1) {
             cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << std::endl;
             return EXIT_FAILURE;
@@ -167,16 +168,18 @@ int main(int argc, char** argv)
     parser.addSwitch("--xclbin_file", "-x", "input binary file string", "");
     parser.addSwitch("--file_path", "-p", "file path string", "");
     parser.addSwitch("--input_file", "-f", "input file string", "");
+    parser.addSwitch("--result_path", "-r", "result file path string", "");
     parser.addSwitch("--device", "-d", "device id", "0");
     parser.parse(argc, argv);
 
     // Read settings
     auto binaryFile = parser.value("xclbin_file");
     string filepath = parser.value("file_path");
+    string resname = parser.value("result_path");
     string dev_id = parser.value("device");
     string filename;
-
-    if (argc < 5) {
+    
+    if (argc < 6) {
         parser.printHelp();
         return EXIT_FAILURE;
     }
@@ -188,6 +191,12 @@ int main(int argc, char** argv)
     } else {
         cout << "\nWARNING: Ignoring -f option when -p options is set. -p has high precedence over -f.\n";
         filename = filepath;
+    }
+
+    if (resname.empty()) {
+        cout << "\nERROR: Please provide the file path to the result\n";
+        parser.printHelp();
+        return EXIT_FAILURE;
     }
 
     /* set kernel */
@@ -253,10 +262,10 @@ int main(int argc, char** argv)
 
     /* Open file from the SSD */
     int nvmefd = open(filename.c_str(), O_RDWR | O_DIRECT);
-    //int resfd = open("result", O_RDWR | O_DIRECT);
-    
+    int resfd = open(resname, O_RDWR | O_DIRECT);
+
     /* Proceed for matrix multiplication */
-    if(EXIT_FAILURE == p2p_MatrixMul(nvmefd, SSD2FPGA, context, cmdq, program))
+    if(EXIT_FAILURE == p2p_MatrixMul(nvmefd, resfd, context, cmdq, program))
         return EXIT_FAILURE;
     (void)close(nvmefd);
 
