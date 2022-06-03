@@ -55,7 +55,7 @@ extern "C" {
 
 void matmul(int* matA, int* matB, int* outC, int row, int col)
 {
-    
+
     /* Creat local buffers */
     int16_t A[ROW][COL];
     int16_t B[ROW][COL];
@@ -69,7 +69,7 @@ readA:
             c = 0;
             r++;
         }
-        A[r][c] = (int16_t*)matA[i];
+        A[r][c] = (int16_t)matA[i];
     }
 
 readB:
@@ -79,7 +79,7 @@ readB:
             c = 0;
             r++;
         }
-        B[r][c] = (int16_t*)matB[i];
+        B[r][c] = (int16_t)matB[i];
     }
 
     /* Multiplication */
@@ -105,7 +105,7 @@ writeC:
             c = 0;
             r++;
         }
-        outC[i] = (int16_t*)C[r][c];
+        outC[i] = (int16_t)C[r][c];
     }
 
     /*end*/
