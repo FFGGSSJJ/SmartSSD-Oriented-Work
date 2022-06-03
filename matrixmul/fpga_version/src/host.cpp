@@ -262,7 +262,7 @@ int main(int argc, char** argv)
 
     /* Open file from the SSD */
     int nvmefd = open(filename.c_str(), O_RDWR | O_DIRECT);
-    int resfd = open(resname, O_RDWR | O_DIRECT);
+    int resfd = open(resname.c_str(), O_RDWR | O_DIRECT);
 
     /* Proceed for matrix multiplication */
     if(EXIT_FAILURE == p2p_MatrixMul(nvmefd, resfd, context, cmdq, program))
