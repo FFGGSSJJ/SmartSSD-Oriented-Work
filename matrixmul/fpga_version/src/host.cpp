@@ -144,8 +144,8 @@ int p2p_MatrixMul(int& nvmeFd,
     std::chrono::high_resolution_clock::time_point p2pEnd2 = std::chrono::high_resolution_clock::now();
 
     /* Calculate the transfer time and bandwidth */
-    cl_ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd2 - p2pStart2).count();
-    dnsduration = (double)p2pTime;
+    cl_ulong p2pTime2 = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd2 - p2pStart2).count();
+    dnsduration = (double)p2pTime2;
     dsduration = dnsduration / ((double)1000000);
     gbpersec = (2 * iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
     std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
