@@ -71,11 +71,7 @@ int cpu_to_fpga(int& nvmeFd,
             
             std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
             for (int i = 0; i < iter; i++) {
-                ret = memcpy((void*)p2pPtr, (void*)dram_ptr, bufsize);
-                if (ret == -1) {
-                    std::cout << "mem copy failed";
-                    return EXIT_FAILURE;
-                }
+                memcpy((void*)p2pPtr, (void*)dram_ptr, bufsize);
             }
             std::chrono::high_resolution_clock::time_point p2pEnd = std::chrono::high_resolution_clock::now();
             cl_ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart).count();
@@ -130,11 +126,7 @@ void fpga_to_cpu(int& nvmeFd,
             
             std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
             for (int i = 0; i < iter; i++) {
-                ret = memcpy((void*)pdram_ptr2pPtr, (void*)p2pPtr1, bufsize);
-                if (ret == -1) {
-                    std::cout << "mem copy failed";
-                    return EXIT_FAILURE;
-                }
+                memcpy((void*)dram_ptr, (void*)p2pPtr1, bufsize);
             }
             std::chrono::high_resolution_clock::time_point p2pEnd = std::chrono::high_resolution_clock::now();
 
