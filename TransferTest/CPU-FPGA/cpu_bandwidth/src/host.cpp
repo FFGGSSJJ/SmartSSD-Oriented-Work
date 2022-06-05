@@ -82,6 +82,7 @@ int cpu_to_fpga(int& nvmeFd,
                     << std::fixed << gbpersec << "GB/s\n";
         }
     }
+    free(dram_ptr);
     return 0;
 }
 
@@ -139,6 +140,7 @@ void fpga_to_cpu(int& nvmeFd,
                     << std::fixed << gbpersec << "GB/s\n";
         }
     }
+    free(dram_ptr);
 }
 
 int main(int argc, char** argv) {
