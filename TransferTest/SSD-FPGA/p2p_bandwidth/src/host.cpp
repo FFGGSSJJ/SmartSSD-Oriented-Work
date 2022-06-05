@@ -58,12 +58,13 @@ int p2p_host_to_ssd(int& nvmeFd,
 
     /* Get the size of the file */
     size_t datasize = 0, val = 0;
+    size_t bufsize = 4 * KB;
     while ((val = pread(nvmeFd, (void*)p2pPtr, bufsize, 0)) > 0)
         datasize += val;
     
     /* Start p2p transfer using various buffer sizes */
     std::cout << "Start P2P Write of various buffer sizes from SSD to device buffers\n" << std::endl;
-    for (size_t bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
+    for (bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
         std::string size_str = xcl::convert_size(bufsize);
 
         int iter = datasize/bufsize;
@@ -117,11 +118,12 @@ void p2p_ssd_to_host(int& nvmeFd,
 
     /* Get the size of the file */
     size_t datasize = 0, val = 0;
+    size_t bufsize = 4 * KB;
     while ((val = pread(nvmeFd, (void*)p2pPtr1, bufsize, 0)) > 0)
         datasize += val;
 
     std::cout << "Start P2P Read of various buffer sizes from device buffers to SSD\n" << std::endl;
-    for (size_t bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
+    for (bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
         std::string size_str = xcl::convert_size(bufsize);
 
         int iter = datasize / bufsize;
