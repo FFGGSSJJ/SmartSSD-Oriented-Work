@@ -40,11 +40,6 @@ int p2p_host_to_ssd(int& nvmeFd,
     int ret = 0;
     size_t vector_size_bytes = sizeof(int) * max_buffer;
 
-    /* Get the size of the file */
-    size_t datasize = 0, val = 0;
-    while ((val = pread(nvmeFd, (void*)p2pPtr, bufsize, 0)) > 0)
-        datasize += val;
-
     // Allocate Buffer in Global Memory
     cl_mem_ext_ptr_t outExt;
     outExt = {XCL_MEM_EXT_P2P_BUFFER, nullptr, 0};
@@ -60,6 +55,11 @@ int p2p_host_to_ssd(int& nvmeFd,
                                       nullptr, nullptr,
                                       &err); // error code
     q.finish();
+
+    /* Get the size of the file */
+    size_t datasize = 0, val = 0;
+    while ((val = pread(nvmeFd, (void*)p2pPtr, bufsize, 0)) > 0)
+        datasize += val;
     
     /* Start p2p transfer using various buffer sizes */
     std::cout << "Start P2P Write of various buffer sizes from SSD to device buffers\n" << std::endl;
@@ -97,11 +97,6 @@ void p2p_ssd_to_host(int& nvmeFd,
     int err;
     size_t vector_size_bytes = sizeof(int) * max_buffer;
 
-    /* Get the size of the file */
-    size_t datasize = 0, val = 0;
-    while ((val = pread(nvmeFd, (void*)p2pPtr, bufsize, 0)) > 0)
-        datasize += val;
-
     // Allocate Buffer in Global Memory
     cl_mem_ext_ptr_t inExt;
     inExt = {XCL_MEM_EXT_P2P_BUFFER, nullptr, 0};
@@ -109,6 +104,7 @@ void p2p_ssd_to_host(int& nvmeFd,
     OCL_CHECK(err, cl::Buffer buffer_input(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, vector_size_bytes, &inExt,
                                            &err));
 
+    /* Map buffer */
     std::cout << "\nMap P2P device buffers to host access pointers\n" << std::endl;
     void* p2pPtr1 = q.enqueueMapBuffer(buffer_input,               // buffer
                                        CL_TRUE,                    // blocking call
@@ -118,6 +114,11 @@ void p2p_ssd_to_host(int& nvmeFd,
                                        nullptr, nullptr,
                                        &err); // error code
     q.finish();
+
+    /* Get the size of the file */
+    size_t datasize = 0, val = 0;
+    while ((val = pread(nvmeFd, (void*)p2pPtr1, bufsize, 0)) > 0)
+        datasize += val;
 
     std::cout << "Start P2P Read of various buffer sizes from device buffers to SSD\n" << std::endl;
     for (size_t bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
@@ -265,7 +266,7 @@ int main(int argc, char** argv) {
 
     p2p_ssd_to_host(nvmeFd, context, q, program, &source_input_A);
     (void)close(nvmeFd);
-    
+
 
     std::cout << "TEST PASSED" << std::endl;
     return EXIT_SUCCESS;
