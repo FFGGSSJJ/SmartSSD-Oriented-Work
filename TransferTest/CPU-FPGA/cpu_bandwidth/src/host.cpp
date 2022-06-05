@@ -25,9 +25,10 @@
 #include <unistd.h>
 #include <vector>
 
-size_t max_buffer = 16 * 1024 * 1024;
-size_t min_buffer = 4 * 1024;
-size_t max_size = 128 * 1024 * 1024; // 128MB
+#define KB  1024
+size_t max_buffer = 512 * 1024 * 1024;
+size_t min_size = 128 * 1024 * 1024;
+size_t max_size = 512 * 1024 * 1024; // 512MB
 
 int cpu_to_fpga(int& nvmeFd,
                     cl::Context context,
@@ -38,37 +39,16 @@ int cpu_to_fpga(int& nvmeFd,
     int ret = 0;
     size_t vector_size_bytes = sizeof(int) * max_buffer;
 
-    cl::Kernel krnl;
+    /* malloc a 0 initialized array of size 512MB */
+    int32_t* dram_ptr = (int32_t*)calloc(1, max_size);
+
     // Allocate Buffer in Global Memory
     cl_mem_ext_ptr_t outExt;
     outExt = {XCL_MEM_EXT_P2P_BUFFER, nullptr, 0};
 
-    OCL_CHECK(err, cl::Buffer input_a(context, CL_MEM_READ_ONLY, vector_size_bytes, nullptr, &err));
-    OCL_CHECK(err,
-              cl::Buffer p2pBo(context, CL_MEM_WRITE_ONLY | CL_MEM_EXT_PTR_XILINX, vector_size_bytes, &outExt, &err));
-    OCL_CHECK(err, krnl = cl::Kernel(program, "bandwidth", &err));
-
-    int* inputPtr = (int*)q.enqueueMapBuffer(input_a, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, vector_size_bytes,
-                                             nullptr, nullptr, &err);
-
-    for (uint32_t i = 0; i < max_buffer; i++) {
-        inputPtr[i] = source_input_A[i];
-    }
-    q.finish();
-
-    // Set the Kernel Arguments
-    OCL_CHECK(err, err = krnl.setArg(0, input_a));
-    OCL_CHECK(err, err = krnl.setArg(1, p2pBo));
-    OCL_CHECK(err, err = krnl.setArg(2, max_buffer));
-
-    // Copy input data to device global memory
-    OCL_CHECK(err, err = q.enqueueMigrateMemObjects({input_a}, 0 /* 0 means from host*/));
-    q.finish();
-
-    // Launch the Kernel
-    OCL_CHECK(err, err = q.enqueueTask(krnl));
-    q.finish();
-
+    OCL_CHECK(err, cl::Buffer p2pBo(context, CL_MEM_WRITE_ONLY | CL_MEM_EXT_PTR_XILINX, vector_size_bytes, &outExt, &err));
+    
+    /* Map buffer */
     std::cout << "\nMap FPGA buffers to host access pointers\n" << std::endl;
     void* p2pPtr = q.enqueueMapBuffer(p2pBo,                      // buffer
                                       CL_TRUE,                    // blocking call
@@ -79,30 +59,32 @@ int cpu_to_fpga(int& nvmeFd,
                                       &err); // error code
     q.finish();
 
-    std::cout << "Start Write of various buffer sizes from CPU to FPGA buffers\n" << std::endl;
-    for (size_t bufsize = min_buffer; bufsize <= vector_size_bytes; bufsize *= 2) {
-        std::string size_str = xcl::convert_size(bufsize);
+    /* Start transfer */
+    std::cout << "Start Write of various buffer sizes from CPU DRAM to FPGA buffers\n" << std::endl;
+    for (size_t datasize = min_size; datasize <= max_size; datasize *= 2) {
+        for (size_t bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
+            std::string size_str = xcl::convert_size(bufsize);
 
-        int iter = max_size / bufsize;
-        if (xcl::is_emulation()) {
-            iter = 2; // Reducing iteration to run faster in emulation flow.
-        }
-        std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
-        for (int i = 0; i < iter; i++) {
-            ret = pread(nvmeFd, (void*)p2pPtr, bufsize, 0);
-            if (ret == -1) {
-                std::cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << std::endl;
-                return EXIT_FAILURE;
+            int iter = datasize / bufsize;
+            if (xcl::is_emulation()) 
+                iter = 2; // Reducing iteration to run faster in emulation flow.
+            
+            std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
+            for (int i = 0; i < iter; i++) {
+                ret = memcpy((void*)p2pPtr, (void*)dram_ptr, bufsize);
+                if (ret == -1) {
+                    std::cout << "mem copy failed";
+                    return EXIT_FAILURE;
+                }
             }
+            std::chrono::high_resolution_clock::time_point p2pEnd = std::chrono::high_resolution_clock::now();
+            cl_ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart).count();
+            double dnsduration = (double)p2pTime;
+            double dsduration = dnsduration / ((double)1000000);
+            double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
+            std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
+                    << std::fixed << gbpersec << "GB/s\n";
         }
-        std::chrono::high_resolution_clock::time_point p2pEnd = std::chrono::high_resolution_clock::now();
-        cl_ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart).count();
-        ;
-        double dnsduration = (double)p2pTime;
-        double dsduration = dnsduration / ((double)1000000);
-        double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
-        std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
-                  << std::fixed << gbpersec << "GB/s\n";
     }
     return 0;
 }
@@ -115,6 +97,9 @@ void fpga_to_cpu(int& nvmeFd,
     int err;
     size_t vector_size_bytes = sizeof(int) * max_buffer;
 
+    /* malloc a 0 initialized array of size 512MB */
+    int32_t* dram_ptr = (int32_t*)malloc(max_size);
+
     // Allocate Buffer in Global Memory
     cl_mem_ext_ptr_t inExt;
     inExt = {XCL_MEM_EXT_P2P_BUFFER, nullptr, 0};
@@ -122,6 +107,7 @@ void fpga_to_cpu(int& nvmeFd,
     OCL_CHECK(err, cl::Buffer buffer_input(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, vector_size_bytes, &inExt,
                                            &err));
 
+    /* Map buffer */
     std::cout << "\nMap P2P device buffers to host access pointers\n" << std::endl;
     void* p2pPtr1 = q.enqueueMapBuffer(buffer_input,               // buffer
                                        CL_TRUE,                    // blocking call
@@ -132,30 +118,34 @@ void fpga_to_cpu(int& nvmeFd,
                                        &err); // error code
     q.finish();
 
-    std::cout << "Start Read of various buffer sizes from FPGA buffers to CPU\n" << std::endl;
-    for (size_t bufsize = min_buffer; bufsize <= vector_size_bytes; bufsize *= 2) {
-        std::string size_str = xcl::convert_size(bufsize);
+    /* Start transfer */
+    std::cout << "Start Read of various buffer sizes from FPGA buffers to CPU DRAM\n" << std::endl;
+    for (size_t datasize = min_size; datasize <= max_size; datasize *= 2) {
+        for (size_t bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
+            std::string size_str = xcl::convert_size(bufsize);
 
-        int iter = max_size / bufsize;
-        if (xcl::is_emulation()) {
-            iter = 2; // Reducing iteration to run faster in emulation flow.
-        }
-        std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
-        for (int i = 0; i < iter; i++) {
-            if (pwrite(nvmeFd, (void*)p2pPtr1, bufsize, 0) <= 0) {
-                std::cerr << "ERR: pwrite failed: "
-                          << " error: " << strerror(errno) << std::endl;
-                exit(EXIT_FAILURE);
+            int iter = datasize / bufsize;
+            if (xcl::is_emulation()) 
+                iter = 2; // Reducing iteration to run faster in emulation flow.
+            
+            std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
+            for (int i = 0; i < iter; i++) {
+                ret = memcpy((void*)pdram_ptr2pPtr, (void*)p2pPtr1, bufsize);
+                if (ret == -1) {
+                    std::cout << "mem copy failed";
+                    return EXIT_FAILURE;
+                }
             }
+            std::chrono::high_resolution_clock::time_point p2pEnd = std::chrono::high_resolution_clock::now();
+
+            /* Calculate the time and bandwidth */
+            cl_ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart).count();
+            double dnsduration = (double)p2pTime;
+            double dsduration = dnsduration / ((double)1000000);
+            double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
+            std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
+                    << std::fixed << gbpersec << "GB/s\n";
         }
-        std::chrono::high_resolution_clock::time_point p2pEnd = std::chrono::high_resolution_clock::now();
-        cl_ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart).count();
-        ;
-        double dnsduration = (double)p2pTime;
-        double dsduration = dnsduration / ((double)1000000);
-        double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
-        std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
-                  << std::fixed << gbpersec << "GB/s\n";
     }
 }
 
