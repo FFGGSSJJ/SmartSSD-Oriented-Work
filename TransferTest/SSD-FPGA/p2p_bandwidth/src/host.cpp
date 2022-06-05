@@ -27,7 +27,7 @@
 
 #define KB  1024
 
-size_t max_buffer = 16 * 1024 * 1024;
+size_t max_buffer = 512 * 1024 * 1024;
 size_t min_buffer = 4 * 1024;
 size_t max_size = 512 * 1024 * 1024; // 512MB
 
