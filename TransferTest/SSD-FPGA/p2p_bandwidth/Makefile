@@ -44,7 +44,7 @@ help::
 
 ############################## Setting up Project Variables ##############################
 # Points to top directory of Git repository
-MK_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
+MK_PATH := ./
 COMMON_REPO ?= $(shell bash -c 'export MK_PATH=$(MK_PATH); echo $${MK_PATH%host/p2p_bandwidth/*}')
 PWD = $(shell readlink -f .)
 XF_PROJ_ROOT = $(shell readlink -f $(COMMON_REPO))
