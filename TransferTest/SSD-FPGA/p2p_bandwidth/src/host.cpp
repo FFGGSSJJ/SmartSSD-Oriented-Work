@@ -26,6 +26,7 @@
 #include <vector>
 
 #define KB  1024
+#define MB  1024 * KB
 
 size_t max_buffer = 512 * 1024 * 1024;
 size_t min_buffer = 4 * 1024;
@@ -38,7 +39,7 @@ int p2p_host_to_ssd(int& nvmeFd,
                     std::vector<int, aligned_allocator<int> > source_input_A) {
     int err;
     int ret = 0;
-    size_t vector_size_bytes = sizeof(int) * max_buffer;
+    size_t vector_size_bytes = max_buffer;
 
     // Allocate Buffer in Global Memory
     cl_mem_ext_ptr_t outExt;
@@ -57,35 +58,35 @@ int p2p_host_to_ssd(int& nvmeFd,
     q.finish();
 
     /* Get the size of the file */
-    size_t datasize = 0, val = 0;
+    size_t datasize = 0;
     size_t bufsize = 4 * KB;
-    while ((val = pread(nvmeFd, (void*)p2pPtr, bufsize, 0)) > 0)
-        datasize += val;
     
     /* Start p2p transfer using various buffer sizes */
     std::cout << "Start P2P Write of various buffer sizes from SSD to device buffers\n" << std::endl;
-    for (bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
-        std::string size_str = xcl::convert_size(bufsize);
+    for (datasize = 128 * MB; datasize <= max_size; datasize *= 2) {
+        for (bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
+            std::string size_str = xcl::convert_size(bufsize);
 
-        int iter = datasize/bufsize;
-        if (xcl::is_emulation()) 
-            iter = 2; // Reducing iteration to run faster in emulation flow.
+            int iter = datasize/bufsize;
+            if (xcl::is_emulation()) 
+                iter = 2; // Reducing iteration to run faster in emulation flow.
 
-        std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
-        for (int i = 0; i < iter; i++) {
-            ret = pread(nvmeFd, (void*)p2pPtr, bufsize, 0);
-            if (ret == -1) {
-                std::cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << std::endl;
-                return EXIT_FAILURE;
+            std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
+            for (int i = 0; i < iter; i++) {
+                ret = pread(nvmeFd, (void*)p2pPtr, bufsize, 0);
+                if (ret == -1) {
+                    std::cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << std::endl;
+                    return EXIT_FAILURE;
+                }
             }
+            std::chrono::high_resolution_clock::time_point p2pEnd = std::chrono::high_resolution_clock::now();
+            cl_ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart).count();
+            double dnsduration = (double)p2pTime;
+            double dsduration = dnsduration / ((double)1000000);
+            double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
+            std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
+                    << std::fixed << gbpersec << "GB/s\n";
         }
-        std::chrono::high_resolution_clock::time_point p2pEnd = std::chrono::high_resolution_clock::now();
-        cl_ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart).count();
-        double dnsduration = (double)p2pTime;
-        double dsduration = dnsduration / ((double)1000000);
-        double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
-        std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
-                  << std::fixed << gbpersec << "GB/s\n";
     }
     return 0;
 }
@@ -117,34 +118,34 @@ void p2p_ssd_to_host(int& nvmeFd,
     q.finish();
 
     /* Get the size of the file */
-    size_t datasize = 0, val = 0;
+    size_t datasize = 0;
     size_t bufsize = 4 * KB;
-    while ((val = pread(nvmeFd, (void*)p2pPtr1, bufsize, 0)) > 0)
-        datasize += val;
 
     std::cout << "Start P2P Read of various buffer sizes from device buffers to SSD\n" << std::endl;
-    for (bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
-        std::string size_str = xcl::convert_size(bufsize);
+    for (datasize = 128 * MB; datasize <= max_size; datasize *= 2) {
+        for (bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
+            std::string size_str = xcl::convert_size(bufsize);
 
-        int iter = datasize / bufsize;
-        if (xcl::is_emulation()) 
-            iter = 2; // Reducing iteration to run faster in emulation flow.
-        
-        std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
-        for (int i = 0; i < iter; i++) {
-            if (pwrite(nvmeFd, (void*)p2pPtr1, bufsize, 0) <= 0) {
-                std::cerr << "ERR: pwrite failed: "
-                          << " error: " << strerror(errno) << std::endl;
-                exit(EXIT_FAILURE);
+            int iter = datasize / bufsize;
+            if (xcl::is_emulation()) 
+                iter = 2; // Reducing iteration to run faster in emulation flow.
+            
+            std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
+            for (int i = 0; i < iter; i++) {
+                if (pwrite(nvmeFd, (void*)p2pPtr1, bufsize, 0) <= 0) {
+                    std::cerr << "ERR: pwrite failed: "
+                            << " error: " << strerror(errno) << std::endl;
+                    exit(EXIT_FAILURE);
+                }
             }
+            std::chrono::high_resolution_clock::time_point p2pEnd = std::chrono::high_resolution_clock::now();
+            cl_ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart).count();
+            double dnsduration = (double)p2pTime;
+            double dsduration = dnsduration / ((double)1000000);
+            double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
+            std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
+                    << std::fixed << gbpersec << "GB/s\n";
         }
-        std::chrono::high_resolution_clock::time_point p2pEnd = std::chrono::high_resolution_clock::now();
-        cl_ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart).count();
-        double dnsduration = (double)p2pTime;
-        double dsduration = dnsduration / ((double)1000000);
-        double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
-        std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
-                  << std::fixed << gbpersec << "GB/s\n";
     }
 }
 
