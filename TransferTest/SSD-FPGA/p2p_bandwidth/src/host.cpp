@@ -64,6 +64,9 @@ int p2p_host_to_ssd(int& nvmeFd,
     /* Start p2p transfer using various buffer sizes */
     std::cout << "Start P2P Write of various buffer sizes from SSD to device buffers\n" << std::endl;
     for (datasize = 128 * MB; datasize <= max_size; datasize *= 2) {
+        std::cout << "\n##########################################\n"
+        std::cout << "   Data Size: " << datasize/MB << "MB\n"
+        std::cout << "##########################################\n"
         for (bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
             std::string size_str = xcl::convert_size(bufsize);
 
@@ -97,7 +100,7 @@ void p2p_ssd_to_host(int& nvmeFd,
                      cl::Program program,
                      std::vector<int, aligned_allocator<int> >* source_input_A) {
     int err;
-    size_t vector_size_bytes = sizeof(int) * max_buffer;
+    size_t vector_size_bytes = max_buffer;
 
     // Allocate Buffer in Global Memory
     cl_mem_ext_ptr_t inExt;
@@ -123,6 +126,9 @@ void p2p_ssd_to_host(int& nvmeFd,
 
     std::cout << "Start P2P Read of various buffer sizes from device buffers to SSD\n" << std::endl;
     for (datasize = 128 * MB; datasize <= max_size; datasize *= 2) {
+        std::cout << "\n##########################################\n"
+        std::cout << "   Data Size: " << datasize/MB << "MB\n"
+        std::cout << "##########################################\n"
         for (bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
             std::string size_str = xcl::convert_size(bufsize);
 
