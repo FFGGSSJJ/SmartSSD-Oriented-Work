@@ -28,16 +28,17 @@ using std::endl;
 /* Macros */
 #define SSD2FPGA    0
 #define FPGA2SSD    1
-#define ROW         100
-#define COL         100
+#define ROW         4096
+#define COL         4096
 #define BytesPerNum 2
 #define BytesPerKB  1024
 #define BytesPerMB  1024*1024
-#define SIZE        ROW*COL*BytesPerNum
+#define SIZE        ROW*COL*BytesPerNum // 32MB
 
 /* Global var for buffer size */
-size_t max_buffer = 16 * 1024 * 1024;
-size_t min_buffer = 4 * 1024;
+size_t max_buffer = 16 * 1024 * 1024;   // 16MB
+size_t mid_buffer = 1 * 1024 * 1024;    // 1MB
+size_t min_buffer = 4 * 1024;           // 4KB
 size_t max_size = 128 * 1024 * 1024; // 128MB
                                                                               
 // #define OCL_CHECK(error, call)                                                                   \
@@ -87,8 +88,8 @@ int p2p_MatrixMul(int& nvmeFd,
 
     /* P2P transfer to load Matrix into FPGA */
     cout << "Trying to p2p transfer Matrix from SSD into FPGA\n";
-    size_t bufsize = min_buffer;
-    int iter = (size_t)SIZE/bufsize + 1;
+    size_t bufsize = mid_buffer;
+    int iter = (size_t)SIZE/bufsize;
     string size_str = xcl::convert_size(bufsize);
 
     std::chrono::high_resolution_clock::time_point p2pStart1 = std::chrono::high_resolution_clock::now();
@@ -151,6 +152,21 @@ int p2p_MatrixMul(int& nvmeFd,
     std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
             << std::fixed << gbpersec << "GB/s\n";
 
+    return EXIT_SUCCESS;
+}
+
+
+
+/**
+ * @brief 
+ * 
+ * @param nvmeFd 
+ * @param resFd 
+ * @return int 
+ */
+int dram_MatrixMul(int& nvmeFd, int& resFd)
+{
+    
     return EXIT_SUCCESS;
 }
 

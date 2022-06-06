@@ -64,9 +64,9 @@ int p2p_host_to_ssd(int& nvmeFd,
     /* Start p2p transfer using various buffer sizes */
     std::cout << "Start P2P Write of various buffer sizes from SSD to device buffers\n" << std::endl;
     for (datasize = 128 * MB; datasize <= max_size; datasize *= 2) {
-        std::cout << "\n##########################################\n";
-        std::cout << "   Data Size: " << datasize/MB << "MB\n";
-        std::cout << "##########################################\n";
+        std::cout << "\n------------------------------------------\n";
+        std::cout << "   Data Size: " << datasize/1024/1024 << "MB";
+        std::cout << "\n------------------------------------------\n";
         for (bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
             std::string size_str = xcl::convert_size(bufsize);
 
@@ -124,11 +124,11 @@ void p2p_ssd_to_host(int& nvmeFd,
     size_t datasize = 0;
     size_t bufsize = 4 * KB;
 
-    std::cout << "Start P2P Read of various buffer sizes from device buffers to SSD\n" << std::endl;
+    std::cout << "Start P2P write of various buffer sizes from device buffers to SSD\n" << std::endl;
     for (datasize = 128 * MB; datasize <= max_size; datasize *= 2) {
-        std::cout << "\n##########################################\n";
-        std::cout << "   Data Size: " << datasize/MB << "MB\n";
-        std::cout << "##########################################\n";
+        std::cout << "\n------------------------------------------\n";
+        std::cout << "   Data Size: " << datasize/1024/1024 << "MB";
+        std::cout << "\n------------------------------------------\n";
         for (bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
             std::string size_str = xcl::convert_size(bufsize);
 
@@ -245,21 +245,7 @@ int main(int argc, char** argv) {
     } else
         std::cout << "Device[" << dev_id << "]: program successful!\n";
 
-    // P2P transfer from host to SSD
-    std::cout << "############################################################\n";
-    std::cout << "                  Reading data from SSD                       \n";
-    std::cout << "############################################################\n";
-    // Get access to the NVMe SSD.
-    nvmeFd = open(filename.c_str(), O_RDWR | O_DIRECT);
-    if (nvmeFd < 0) {
-        std::cerr << "ERROR: open " << filename << "failed: " << std::endl;
-        return EXIT_FAILURE;
-    }
-    std::cout << "INFO: Successfully opened NVME SSD " << filename << std::endl;
-    int ret = 0;
-    ret = p2p_host_to_ssd(nvmeFd, context, q, program, source_input_A);
-    (void)close(nvmeFd);
-    if (ret != 0) return EXIT_FAILURE;
+
 
     // P2P transfer from SSD to host
     std::cout << "############################################################\n";
@@ -275,6 +261,23 @@ int main(int argc, char** argv) {
 
     p2p_ssd_to_host(nvmeFd, context, q, program, &source_input_A);
     (void)close(nvmeFd);
+
+
+    // P2P transfer from host to SSD
+    std::cout << "############################################################\n";
+    std::cout << "                  Reading data from SSD                       \n";
+    std::cout << "############################################################\n";
+    // Get access to the NVMe SSD.
+    nvmeFd = open(filename.c_str(), O_RDWR | O_DIRECT);
+    if (nvmeFd < 0) {
+        std::cerr << "ERROR: open " << filename << "failed: " << std::endl;
+        return EXIT_FAILURE;
+    }
+    std::cout << "INFO: Successfully opened NVME SSD " << filename << std::endl;
+    int ret = 0;
+    ret = p2p_host_to_ssd(nvmeFd, context, q, program, source_input_A);
+    (void)close(nvmeFd);
+    if (ret != 0) return EXIT_FAILURE;
 
 
     std::cout << "TEST PASSED" << std::endl;
