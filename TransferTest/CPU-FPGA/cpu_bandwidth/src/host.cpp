@@ -27,6 +27,7 @@
 #include <x86intrin.h>
 
 #define KB  1024
+#define MB  1024 * KB
 size_t max_buffer = 512 * 1024 * 1024;
 size_t min_size = 128 * 1024 * 1024;
 size_t max_size = 512 * 1024 * 1024; // 512MB
@@ -63,6 +64,9 @@ int cpu_to_fpga(int& nvmeFd,
     /* Start transfer */
     std::cout << "Start Write of various buffer sizes from CPU DRAM to FPGA buffers\n" << std::endl;
     for (size_t datasize = min_size; datasize <= max_size; datasize *= 2) {
+        std::cout << "\n##########################################\n";
+        std::cout << "   Data Size: " << datasize/MB << "MB\n";
+        std::cout << "##########################################\n";
         for (size_t bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
             std::string size_str = xcl::convert_size(bufsize);
 
@@ -123,6 +127,9 @@ void fpga_to_cpu(int& nvmeFd,
     /* Start transfer */
     std::cout << "Start Read of various buffer sizes from FPGA buffers to CPU DRAM\n" << std::endl;
     for (size_t datasize = min_size; datasize <= max_size; datasize *= 2) {
+        std::cout << "\n##########################################\n";
+        std::cout << "   Data Size: " << datasize/MB << "MB\n";
+        std::cout << "##########################################\n";
         for (size_t bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
             std::string size_str = xcl::convert_size(bufsize);
 
@@ -148,7 +155,7 @@ void fpga_to_cpu(int& nvmeFd,
             _mm_clflush(dram_ptr);
         }
     }
-    
+
     free(dram_ptr);
 }
 
