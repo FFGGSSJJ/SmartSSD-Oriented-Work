@@ -81,7 +81,7 @@ int cpu_to_fpga(int& nvmeFd,
             double dnsduration = (double)p2pTime;
             double dsduration = dnsduration / ((double)1000000);
             double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
-            std::cout << "Buffer = " << size_str << " Iterations = " << iter << "Time = " << dsduration << " Throughput = " << std::setprecision(2)
+            std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Time = " << dsduration << " Throughput = " << std::setprecision(2)
                     << std::fixed << gbpersec << "GB/s\n";
             
             /* flush cache lines */
@@ -98,17 +98,16 @@ void fpga_to_cpu(int& nvmeFd,
                      cl::Program program,
                      std::vector<int, aligned_allocator<int> >* source_input_A) {
     int err;
-    size_t vector_size_bytes = sizeof(int) * max_buffer;
+    size_t vector_size_bytes = max_buffer;
 
     /* malloc a 0 initialized array of size 512MB */
     int32_t* dram_ptr = (int32_t*)malloc(max_size);
 
-    // Allocate Buffer in Global Memory
-    cl_mem_ext_ptr_t inExt;
-    inExt = {XCL_MEM_EXT_P2P_BUFFER, nullptr, 0};
+    /* flush cache lines */
+    _mm_clflush(dram_ptr);
 
-    OCL_CHECK(err, cl::Buffer buffer_input(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, vector_size_bytes, &inExt,
-                                           &err));
+    // Allocate Buffer in Global Memory
+    OCL_CHECK(err, cl::Buffer buffer_input(context, CL_MEM_READ_ONLY, vector_size_bytes, nullptr, &err));
 
     /* Map buffer */
     std::cout << "\nMap P2P device buffers to host access pointers\n" << std::endl;
@@ -142,13 +141,14 @@ void fpga_to_cpu(int& nvmeFd,
             double dnsduration = (double)p2pTime;
             double dsduration = dnsduration / ((double)1000000);
             double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
-            std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
+            std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Time = " << dsduration << " Throughput = " << std::setprecision(2)
                     << std::fixed << gbpersec << "GB/s\n";
             
             /* flush cache lines */
             _mm_clflush(dram_ptr);
         }
     }
+    
     free(dram_ptr);
 }
 
