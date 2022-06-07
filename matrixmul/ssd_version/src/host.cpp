@@ -168,6 +168,8 @@ int p2p_MatrixMul(int& nvmeFd,
 int dram_MatrixMul(int& nvmeFd, int16_t* resPtr)
 {
     if (resPtr == NULL) return EXIT_FAILURE;
+
+    int ret;
     /* Allocate matrix spaces in DRAM */
     int16_t* matA = (int16_t*)malloc(ROW*COL*sizeof(int16_t));
     int16_t* matB = (int16_t*)malloc(ROW*COL*sizeof(int16_t));
@@ -227,7 +229,7 @@ int dram_MatrixMul(int& nvmeFd, int16_t* resPtr)
 
     /* Calculate the time */
     cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
-    dnsduration = (double)Time;
+    dnsduration = (double)Time2;
     dsduration = dnsduration / ((double)1000000);
     std::cout << "Calculation time: " << dnsduration << " ns" << " | " << dsduration << " s\n";
 
