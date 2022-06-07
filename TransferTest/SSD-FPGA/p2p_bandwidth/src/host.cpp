@@ -120,6 +120,13 @@ void p2p_ssd_to_host(int& nvmeFd,
                                        &err); // error code
     q.finish();
 
+
+    /* Initialize */
+    p2pPtr1 = (int32_t*)p2pPtr1;
+    for (int32_t i = 0; i < vector_size_bytes/sizeof(int32_t); i++) {
+        p2pPtr1[i] = (int32_t)1;
+    }
+
     /* Get the size of the file */
     size_t datasize = 0;
     size_t bufsize = 4 * KB;
