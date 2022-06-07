@@ -14,6 +14,8 @@
 #include <hls_stream.h>
 
 /* define */
+#define ROW         4096
+#define COL         4096
 #define PARALLEL    0
 #define BytesPerNum 2
 #define BytesPerKB  1024
@@ -55,9 +57,9 @@ void matmul(int* matA, int* matB, int* outC, int row, int col)
 {
 
     /* Creat local buffers */
-    int16_t A[row][col];
-    int16_t B[row][col];
-    int16_t C[row][col];
+    int16_t A[ROW][COL];
+    int16_t B[ROW][COL];
+    int16_t C[ROW][COL];
 
     /* Load matrix from global memory into local buffer */
 readA:
