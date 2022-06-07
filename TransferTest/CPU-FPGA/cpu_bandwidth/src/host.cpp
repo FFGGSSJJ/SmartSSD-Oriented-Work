@@ -32,6 +32,19 @@ size_t max_buffer = 512 * 1024 * 1024;
 size_t min_size = 128 * 1024 * 1024;
 size_t max_size = 512 * 1024 * 1024; // 512MB
 
+
+void flush_cachelines(void* ptr)
+{
+    const int LINESIZE = 64;
+    const char* p = (const char*)ptr;
+    uintptr_t endline = ((uintptr_t)ptr + max_size - 1) | (LINESIZE-1);
+
+    do {   // flush while p is in a cache line that contains any of the struct
+         _mm_clflush(p);
+          p += LINESIZE;
+    } while(p <= (const char*)endline);
+}
+
 int cpu_to_fpga(int& nvmeFd,
                     cl::Context context,
                     cl::CommandQueue q,
@@ -45,7 +58,8 @@ int cpu_to_fpga(int& nvmeFd,
     int32_t* dram_ptr = (int32_t*)calloc(1, max_size);
 
     /* flush cache lines */
-    _mm_clflush(dram_ptr);
+    //_mm_clflush(dram_ptr);
+    flush_cachelines(dram_ptr);
 
     // Allocate Buffer in Global Memory
     OCL_CHECK(err, cl::Buffer devPtr(context, CL_MEM_WRITE_ONLY, vector_size_bytes, nullptr, &err));
@@ -89,7 +103,8 @@ int cpu_to_fpga(int& nvmeFd,
                     << std::fixed << gbpersec << "GB/s\n";
             
             /* flush cache lines */
-            _mm_clflush(dram_ptr);
+            //_mm_clflush(dram_ptr);
+            flush_cachelines(dram_ptr);
         }
     }
     free(dram_ptr);
@@ -108,7 +123,8 @@ void fpga_to_cpu(int& nvmeFd,
     int32_t* dram_ptr = (int32_t*)malloc(max_size);
 
     /* flush cache lines */
-    _mm_clflush(dram_ptr);
+    //_mm_clflush(dram_ptr);
+    flush_cachelines(dram_ptr);
 
     // Allocate Buffer in Global Memory
     OCL_CHECK(err, cl::Buffer buffer_input(context, CL_MEM_READ_ONLY, vector_size_bytes, nullptr, &err));
@@ -152,7 +168,8 @@ void fpga_to_cpu(int& nvmeFd,
                     << std::fixed << gbpersec << "GB/s\n";
             
             /* flush cache lines */
-            _mm_clflush(dram_ptr);
+            //_mm_clflush(dram_ptr);
+            flush_cachelines(dram_ptr);
         }
     }
 
