@@ -153,6 +153,7 @@ int p2p_MatrixMul(int& nvmeFd,
     std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
             << std::fixed << gbpersec << "GB/s\n";
 
+    /* */
     return EXIT_SUCCESS;
 }
 

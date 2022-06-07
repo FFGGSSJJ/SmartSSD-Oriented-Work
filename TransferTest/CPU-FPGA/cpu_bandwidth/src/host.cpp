@@ -85,7 +85,7 @@ int cpu_to_fpga(int& nvmeFd,
             double dnsduration = (double)p2pTime;
             double dsduration = dnsduration / ((double)1000000);
             double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
-            std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Time = " << dsduration << " Throughput = " << std::setprecision(2)
+            std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Time = " << dnsduration << " Throughput = " << std::setprecision(2)
                     << std::fixed << gbpersec << "GB/s\n";
             
             /* flush cache lines */
@@ -148,7 +148,7 @@ void fpga_to_cpu(int& nvmeFd,
             double dnsduration = (double)p2pTime;
             double dsduration = dnsduration / ((double)1000000);
             double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
-            std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Time = " << dsduration << " Throughput = " << std::setprecision(2)
+            std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Time = " << dnsduration << " Throughput = " << std::setprecision(2)
                     << std::fixed << gbpersec << "GB/s\n";
             
             /* flush cache lines */
