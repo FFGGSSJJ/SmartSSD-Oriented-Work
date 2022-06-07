@@ -15,8 +15,6 @@
 
 /* define */
 #define PARALLEL    0
-#define ROW         100
-#define COL         100
 #define BytesPerNum 2
 #define BytesPerKB  1024
 #define BytesPerMB  1024*1024
@@ -57,9 +55,9 @@ void matmul(int* matA, int* matB, int* outC, int row, int col)
 {
 
     /* Creat local buffers */
-    int16_t A[ROW][COL];
-    int16_t B[ROW][COL];
-    int16_t C[ROW][COL];
+    int16_t A[row][col];
+    int16_t B[row][col];
+    int16_t C[row][col];
 
     /* Load matrix from global memory into local buffer */
 readA:
@@ -84,16 +82,16 @@ readB:
 
     /* Multiplication */
 calculateC:
-    for (int r = 0; r < ROW; r++) {
+    for (int r = 0; r < row; r++) {
 #pragma HLS LOOP_TRIPCOUNT min = row max = row
-        for (int c = 0; c < COL; c++) {
+        for (int c = 0; c < col; c++) {
+            int16_t res = 0;
     #pragma HLS LOOP_TRIPCOUNT min = col max = col
             for (int i = 0; i < row; i++) {
         #pragma HLS LOOP_TRIPCOUNT min = row max = row
-                int16_t res = A[r][i] * B[i][c];
-                C[r][c] = res;
-            }            
-
+                res += A[r][i] * B[i][c];
+            }  
+            C[r][c] = res;
         }
     }
 

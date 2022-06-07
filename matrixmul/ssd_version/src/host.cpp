@@ -18,6 +18,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <vector>
+#include <x86intrin.h>
 
 /* namespace usage */
 using std::vector;
@@ -161,12 +162,75 @@ int p2p_MatrixMul(int& nvmeFd,
  * @brief 
  * 
  * @param nvmeFd 
- * @param resFd 
+ * @param resPtr
  * @return int 
  */
-int dram_MatrixMul(int& nvmeFd, int& resFd)
+int dram_MatrixMul(int& nvmeFd, int16_t* resPtr)
 {
+    if (resPtr == NULL) return EXIT_FAILURE;
+    /* Allocate matrix spaces in DRAM */
+    int16_t* matA = (int16_t*)malloc(ROW*COL*sizeof(int16_t));
+    int16_t* matB = (int16_t*)malloc(ROW*COL*sizeof(int16_t));
+
+    /* flush cache line */
+    _mm_clflush((void*)matA);
+    _mm_clflush((void*)matB);
     
+    /* read from SSD into DRAM */
+    cout << "Trying to transfer Matrix from SSD into DRAM\n";
+    size_t bufsize = mid_buffer;
+    int iter = ((size_t)SIZE)/bufsize;
+    string size_str = xcl::convert_size(bufsize);
+
+/* Transfer Data */
+    std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
+    /* Transfer matrix A */
+    for (int i = 0; i < iter; i++) {
+        ret = pread(nvmeFd, (void*)matA, bufsize, 0);
+        if (ret == -1) {
+            cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << std::endl;
+            return EXIT_FAILURE;
+        }
+    }
+    /* Transfer matrix B */
+    for (int i = 0; i < iter; i++) {
+        ret = pread(nvmeFd, (void*)matB, bufsize, 0);
+        if (ret == -1) {
+            cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << std::endl;
+            return EXIT_FAILURE;
+        }
+    }
+    std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
+
+    /* Calculate the transfer time and bandwidth */
+    cl_ulong Time = std::chrono::duration_cast<std::chrono::microseconds>(End1 - Start1).count();
+    double dnsduration = (double)Time;
+    double dsduration = dnsduration / ((double)1000000);
+    double gbpersec = (2 * iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
+    std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
+            << std::fixed << gbpersec << "GB/s\n";
+    
+    /* flush cache line */
+    _mm_clflush((void*)matA);
+    _mm_clflush((void*)matB);
+
+/* Matrix Multiplication */
+    std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
+    for (int r = 0; r < ROW; r++) {
+        for (int c = 0; c < COL; c++) {
+            for (int i = 0; i < ROW; i++) {
+                resPtr[r*ROW + c] += matA[r*ROW + i] * matB[i*ROW + c];
+            }
+        }
+    }
+    std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
+
+    /* Calculate the time */
+    cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
+    dnsduration = (double)Time;
+    dsduration = dnsduration / ((double)1000000);
+    std::cout << "Calculation time: " << dnsduration << " ns" << " | " << dsduration << " s\n";
+
     return EXIT_SUCCESS;
 }
 
