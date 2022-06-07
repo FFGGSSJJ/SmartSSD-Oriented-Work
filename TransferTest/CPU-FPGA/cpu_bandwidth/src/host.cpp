@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <vector>
 #include <x86intrin.h>
+#include <sys/cachectl.h>
 
 #define KB  1024
 #define MB  1024 * KB
@@ -45,7 +46,11 @@ int cpu_to_fpga(int& nvmeFd,
     int32_t* dram_ptr = (int32_t*)calloc(1, max_size);
 
     /* flush cache lines */
-    _mm_clflush(dram_ptr);
+    //_mm_clflush(dram_ptr);
+    if ((ret = cacheflush((void*)dram_ptr, (int)max_size, BCACHE)) != 0) {
+        exit(ret);
+        return EXIT_FAILURE;
+    }
 
     // Allocate Buffer in Global Memory
     OCL_CHECK(err, cl::Buffer devPtr(context, CL_MEM_WRITE_ONLY, vector_size_bytes, nullptr, &err));
@@ -89,7 +94,11 @@ int cpu_to_fpga(int& nvmeFd,
                     << std::fixed << gbpersec << "GB/s\n";
             
             /* flush cache lines */
-            _mm_clflush(dram_ptr);
+            //_mm_clflush(dram_ptr);
+            if ((ret = cacheflush((void*)dram_ptr, (int)max_size, BCACHE)) != 0) {
+                exit(ret);
+                return EXIT_FAILURE;
+            }
         }
     }
     free(dram_ptr);
@@ -108,7 +117,11 @@ void fpga_to_cpu(int& nvmeFd,
     int32_t* dram_ptr = (int32_t*)malloc(max_size);
 
     /* flush cache lines */
-    _mm_clflush(dram_ptr);
+    //_mm_clflush(dram_ptr);
+    if ((ret = cacheflush((void*)dram_ptr, (int)max_size, BCACHE)) != 0) {
+        exit(ret);
+        return EXIT_FAILURE;
+    }
 
     // Allocate Buffer in Global Memory
     OCL_CHECK(err, cl::Buffer buffer_input(context, CL_MEM_READ_ONLY, vector_size_bytes, nullptr, &err));
@@ -152,7 +165,11 @@ void fpga_to_cpu(int& nvmeFd,
                     << std::fixed << gbpersec << "GB/s\n";
             
             /* flush cache lines */
-            _mm_clflush(dram_ptr);
+            //_mm_clflush(dram_ptr);
+            if ((ret = cacheflush((void*)dram_ptr, (int)max_size, BCACHE)) != 0) {
+                exit(ret);
+                return EXIT_FAILURE;
+            }
         }
     }
 
