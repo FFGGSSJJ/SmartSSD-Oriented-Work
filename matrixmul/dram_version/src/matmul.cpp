@@ -17,7 +17,7 @@
 #define ROW         4096
 #define COL         4096
 #define PARALLEL    0
-#define BytesPerNum 2
+#define BytesPerNum 4
 #define BytesPerKB  1024
 #define BytesPerMB  1024*1024
 
@@ -57,9 +57,9 @@ void matmul(int* matA, int* matB, int* outC, int row, int col)
 {
 
     /* Creat local buffers */
-    int16_t A[ROW][COL];
-    int16_t B[ROW][COL];
-    int16_t C[ROW][COL];
+    int32_t A[ROW][COL];
+    int32_t B[ROW][COL];
+    int32_t C[ROW][COL];
 
     /* Load matrix from global memory into local buffer */
 readA:
@@ -69,7 +69,7 @@ readA:
             c = 0;
             r++;
         }
-        A[r][c] = (int16_t)matA[i];
+        A[r][c] = (int32_t)matA[i];
     }
 
 readB:
@@ -79,7 +79,7 @@ readB:
             c = 0;
             r++;
         }
-        B[r][c] = (int16_t)matB[i];
+        B[r][c] = (int32_t)matB[i];
     }
 
     /* Multiplication */
@@ -87,7 +87,7 @@ calculateC:
     for (int r = 0; r < row; r++) {
 #pragma HLS LOOP_TRIPCOUNT min = row max = row
         for (int c = 0; c < col; c++) {
-            int16_t res = 0;
+            int32_t res = 0;
     #pragma HLS LOOP_TRIPCOUNT min = col max = col
             for (int i = 0; i < row; i++) {
         #pragma HLS LOOP_TRIPCOUNT min = row max = row
@@ -105,7 +105,7 @@ writeC:
             c = 0;
             r++;
         }
-        outC[i] = (int16_t)C[r][c];
+        outC[i] = (int32_t)C[r][c];
     }
 
     /*end*/

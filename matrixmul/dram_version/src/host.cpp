@@ -31,14 +31,14 @@ using std::endl;
 #define FPGA2SSD    1
 #define ROW         4096
 #define COL         4096
-#define BytesPerNum 2
+#define BytesPerNum 4
 #define BytesPerKB  1024
 #define BytesPerMB  1024*1024
 #define SIZE        ROW*COL*BytesPerNum // 32MB
 
 /* Global var for buffer size */
 size_t max_buffer = 16 * 1024 * 1024;   // 16MB
-size_t mid_buffer = 1 * 1024 * 1024;    // 1MB
+size_t mid_buffer = 2 * 1024 * 1024;    // 2MB
 size_t min_buffer = 4 * 1024;           // 4KB
 size_t max_size = 128 * 1024 * 1024; // 128MB
 
@@ -63,7 +63,7 @@ void flush_cachelines(void* ptr)
  * @param program 
  * @return int 
  */
-int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int16_t* resPtr)
+int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int32_t* resPtr)
 {
     int err;
     cl::Kernel kernel;
@@ -74,14 +74,14 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     cl::Buffer matC(context, CL_MEM_WRITE_ONLY, (size_t)SIZE, nullptr, &err);
 
     /* Map allocated p2p global buffers into host */
-    int16_t* matAptr = (int16_t*)cmdq.enqueueMapBuffer(matA, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
-    int16_t* matBptr = (int16_t*)cmdq.enqueueMapBuffer(matB, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
-    int16_t* matCptr = (int16_t*)cmdq.enqueueMapBuffer(matC, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
+    int32_t* matAptr = (int32_t*)cmdq.enqueueMapBuffer(matA, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
+    int32_t* matBptr = (int32_t*)cmdq.enqueueMapBuffer(matB, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
+    int32_t* matCptr = (int32_t*)cmdq.enqueueMapBuffer(matC, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
     cmdq.finish();
 
     /* Allocate space in DRAM for matrix A and B */
-    int16_t* matAdram = (int16_t*)malloc((size_t)SIZE);
-    int16_t* matBdram = (int16_t*)malloc((size_t)SIZE);
+    int32_t* matAdram = (int32_t*)malloc((size_t)SIZE);
+    int32_t* matBdram = (int32_t*)malloc((size_t)SIZE);
 
     /* Initialize matrix */
     for (int i = 0; i < ROW*COL; i++) {
@@ -158,13 +158,13 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
  * @param resPtr
  * @return int 
  */
-int dram_cpuMatrixMul(int16_t* resPtr)
+int dram_cpuMatrixMul(int32_t* resPtr)
 {
     if (resPtr == NULL) return EXIT_FAILURE;
 
     /* Allocate matrix spaces in DRAM */
-    int16_t* matA = (int16_t*)malloc(ROW*COL*sizeof(int16_t));
-    int16_t* matB = (int16_t*)malloc(ROW*COL*sizeof(int16_t));
+    int32_t* matA = (int32_t*)malloc(ROW*COL*sizeof(int32_t));
+    int32_t* matB = (int32_t*)malloc(ROW*COL*sizeof(int32_t));
 
     /* Initialize the matrix */
     for (int i = 0; i < ROW*COL; i++) {
@@ -289,8 +289,8 @@ int main(int argc, char** argv)
 
 
     /* Allocate matrix in DRAM */
-    int16_t* matCdev = (int16_t*)malloc((size_t)SIZE);
-    int16_t* matCcpu = (int16_t*)malloc((size_t)SIZE);
+    int32_t* matCdev = (int32_t*)malloc((size_t)SIZE);
+    int32_t* matCcpu = (int32_t*)malloc((size_t)SIZE);
 
     /* Initialize matrix */
     for (int i = 0; i < ROW*COL; i++) {
