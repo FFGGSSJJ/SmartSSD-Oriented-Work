@@ -41,15 +41,19 @@ size_t max_buffer = 16 * 1024 * 1024;   // 16MB
 size_t mid_buffer = 1 * 1024 * 1024;    // 1MB
 size_t min_buffer = 4 * 1024;           // 4KB
 size_t max_size = 128 * 1024 * 1024; // 128MB
-                                                                              
-// #define OCL_CHECK(error, call)                                                                   \
-//     call;                                                                                        \
-//     if (error != CL_SUCCESS) {                                                                   \
-//         printf("%s:%d Error calling " #call ", error code is: %d\n", __FILE__, __LINE__, error); \
-//         exit(EXIT_FAILURE);                                                                      \
-//     }
 
+                                                         
+void flush_cachelines(void* ptr)
+{
+    const int LINESIZE = 64;
+    const char* p = (const char*)ptr;
+    uintptr_t endline = ((uintptr_t)ptr + max_size - 1) | (LINESIZE-1);
 
+    do {   // flush while p is in a cache line that contains any of the struct
+         _mm_clflush(p);
+          p += LINESIZE;
+    } while(p <= (const char*)endline);
+}
 
 /**
  * @brief p2p_MatrixMul
@@ -59,7 +63,7 @@ size_t max_size = 128 * 1024 * 1024; // 128MB
  * @param program 
  * @return int 
  */
-int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program program)
+int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int16_t* resPtr)
 {
     int err, ret;
     cl::Kernel kernel;
@@ -75,10 +79,20 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     int16_t* matCptr = (int16_t*)cmdq.enqueueMapBuffer(matC, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
     cmdq.finish();
 
+    /* Allocate space in DRAM for matrix A and B */
+    int16_t* matAdram = (int16_t*)malloc((size_t)SIZE);
+    int16_t* matBdram = (int16_t*)malloc((size_t)SIZE);
+
+    /* Initialize matrix */
+    for (int i = 0; i < ROW*COL; i++) {
+        matAdram[i] = 1;
+        matBdram[i] = 1;
+    }
+
     /* Initialize the kernel */
     OCL_CHECK(err, kernel = cl::Kernel(program, "matmul", &err));
 
-    /* P2P transfer to load Matrix into FPGA */
+    /* transfer to load Matrix into FPGA */
     cout << "Trying to transfer Matrix from DRAM into FPGA\n";
     size_t bufsize = mid_buffer;
     int iter = (size_t)SIZE/bufsize;
@@ -87,26 +101,17 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
     /* Transfer matrix A */
     for (int i = 0; i < iter; i++) {
-        
-        ret = pread(nvmeFd, (void*)matAptr, bufsize, 0);
-        if (ret == -1) {
-            cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << std::endl;
-            return EXIT_FAILURE;
-        }
+        memcpy((void*)matAptr, (void*)matAdram, bufsize);
     }
     /* Transfer matrix B */
     for (int i = 0; i < iter; i++) {
-        ret = pread(nvmeFd, (void*)matBptr, bufsize, 0);
-        if (ret == -1) {
-            cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << std::endl;
-            return EXIT_FAILURE;
-        }
+        memcpy((void*)matBptr, (void*)matBdram, bufsize);
     }
     std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
 
     /* Calculate the transfer time and bandwidth */
-    cl_ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd1 - p2pStart1).count();
-    double dnsduration = (double)p2pTime;
+    cl_ulong Time = std::chrono::duration_cast<std::chrono::microseconds>(End1 - Start1).count();
+    double dnsduration = (double)Time;
     double dsduration = dnsduration / ((double)1000000);
     double gbpersec = (2 * iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
     std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
@@ -124,24 +129,20 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     OCL_CHECK(err, err = cmdq.enqueueTask(kernel));
     cmdq.finish();
 
-    /* P2P transfer to load the result into SSD */
-    cout << "Trying to p2p transfer Matrix from FPGA into SSD\n";
-    std::chrono::high_resolution_clock::time_point p2pStart2 = std::chrono::high_resolution_clock::now();
+    /* transfer to load the result into DRAM */
+    cout << "Trying to transfer Matrix from FPGA into DRAM\n";
+    std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
     /* Transfer matrix C */
     for (int i = 0; i < iter; i++) {
-        ret = pwrite(resFd, (void*)matCptr, bufsize, 0);
-        if (ret == -1) {
-            cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << std::endl;
-            return EXIT_FAILURE;
-        }
+        memcpy((void*)resPtr, (void*)matCptr, bufsize);
     }
-    std::chrono::high_resolution_clock::time_point p2pEnd2 = std::chrono::high_resolution_clock::now();
+    std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
 
     /* Calculate the transfer time and bandwidth */
-    cl_ulong p2pTime2 = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd2 - p2pStart2).count();
-    dnsduration = (double)p2pTime2;
+    cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd2 - p2pStart2).count();
+    dnsduration = (double)Time2;
     dsduration = dnsduration / ((double)1000000);
-    gbpersec = (2 * iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
+    gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
     std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
             << std::fixed << gbpersec << "GB/s\n";
 
@@ -154,11 +155,10 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
 /**
  * @brief 
  * 
- * @param nvmeFd 
  * @param resPtr
  * @return int 
  */
-int dram_cpuMatrixMul(int& nvmeFd, int16_t* resPtr)
+int dram_cpuMatrixMul(int16_t* resPtr)
 {
     if (resPtr == NULL) return EXIT_FAILURE;
 
@@ -167,49 +167,17 @@ int dram_cpuMatrixMul(int& nvmeFd, int16_t* resPtr)
     int16_t* matA = (int16_t*)malloc(ROW*COL*sizeof(int16_t));
     int16_t* matB = (int16_t*)malloc(ROW*COL*sizeof(int16_t));
 
-    /* flush cache line */
-    _mm_clflush((void*)matA);
-    _mm_clflush((void*)matB);
-    
-    /* read from SSD into DRAM */
-    cout << "Trying to transfer Matrix from SSD into DRAM\n";
-    size_t bufsize = mid_buffer;
-    int iter = ((size_t)SIZE)/bufsize;
-    string size_str = xcl::convert_size(bufsize);
-
-/* Transfer Data */
-    std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
-    /* Transfer matrix A */
-    for (int i = 0; i < iter; i++) {
-        ret = pread(nvmeFd, (void*)matA, bufsize, 0);
-        if (ret == -1) {
-            cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << std::endl;
-            return EXIT_FAILURE;
-        }
+    /* Initialize the matrix */
+    for (int i = 0; i < ROW*COL; i++) {
+        matA[i] = 1;
+        matB[i] = 1;
     }
-    /* Transfer matrix B */
-    for (int i = 0; i < iter; i++) {
-        ret = pread(nvmeFd, (void*)matB, bufsize, 0);
-        if (ret == -1) {
-            cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << std::endl;
-            return EXIT_FAILURE;
-        }
-    }
-    std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
 
-    /* Calculate the transfer time and bandwidth */
-    cl_ulong Time = std::chrono::duration_cast<std::chrono::microseconds>(End1 - Start1).count();
-    double dnsduration = (double)Time;
-    double dsduration = dnsduration / ((double)1000000);
-    double gbpersec = (2 * iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
-    std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
-            << std::fixed << gbpersec << "GB/s\n";
-    
     /* flush cache line */
-    _mm_clflush((void*)matA);
-    _mm_clflush((void*)matB);
-
-/* Matrix Multiplication */
+    flush_cachelines((void*)matA);
+    flush_cachelines((void*)matB);
+    
+    /* Matrix Multiplication */
     std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
     for (int r = 0; r < ROW; r++) {
         for (int c = 0; c < COL; c++) {
@@ -322,27 +290,29 @@ int main(int argc, char** argv)
 
 
     /* Allocate matrix in DRAM */
-    int16_t* matA = (int16_t*)malloc((size_t)SIZE);
-    int16_t* matB = (int16_t*)malloc((size_t)SIZE);
-    int16_t* matC = (int16_t*)malloc((size_t)SIZE);
+    int16_t* matCdev = (int16_t*)malloc((size_t)SIZE);
+    int16_t* matCcpu = (int16_t*)malloc((size_t)SIZE);
 
     /* Initialize matrix */
     for (int i = 0; i < ROW*COL; i++) {
-        matA[i] = 1;
-        matB[i] = 1;
-        matC[i] = 0;
+        matCdev[i] = 0;
+        matCcpu[i] = 0;
     }
 
     /* flush cache line */
-    _mm_clflush((void*)matA);
-    _mm_clflush((void*)matB);
-    _mm_clflush((void*)matC);
+    flush_cachelines((void*)matCdev);
+    flush_cachelines((void*)matCcpu);
 
     /* Proceed for matrix multiplication */
-    if(EXIT_FAILURE == dram_devMatrixMul(context, cmdq, program))
+    if (EXIT_FAILURE == dram_devMatrixMul(context, cmdq, program, matCdev))
         return EXIT_FAILURE;
-    (void)close(nvmefd);
 
-    cout << "TEST PASSED" << std::endl;
+    if (EXIT_SUCCESS == dram_cpuMatrixMul(matCcpu))
+        return EXIT_FAILURE;
+
+    /* Check is the result matches */
+    if (memcmp(matCcpu, matCdev, (size_t)SIZE) == 0)
+        cout << "TEST PASSED" << std::endl;
+    
     return EXIT_SUCCESS;    
 }

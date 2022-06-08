@@ -41,15 +41,19 @@ size_t max_buffer = 16 * 1024 * 1024;   // 16MB
 size_t mid_buffer = 1 * 1024 * 1024;    // 1MB
 size_t min_buffer = 4 * 1024;           // 4KB
 size_t max_size = 128 * 1024 * 1024; // 128MB
-                                                                              
-// #define OCL_CHECK(error, call)                                                                   \
-//     call;                                                                                        \
-//     if (error != CL_SUCCESS) {                                                                   \
-//         printf("%s:%d Error calling " #call ", error code is: %d\n", __FILE__, __LINE__, error); \
-//         exit(EXIT_FAILURE);                                                                      \
-//     }
 
 
+void flush_cachelines(void* ptr)
+{
+    const int LINESIZE = 64;
+    const char* p = (const char*)ptr;
+    uintptr_t endline = ((uintptr_t)ptr + max_size - 1) | (LINESIZE-1);
+
+    do {   // flush while p is in a cache line that contains any of the struct
+         _mm_clflush(p);
+          p += LINESIZE;
+    } while(p <= (const char*)endline);
+}
 
 /**
  * @brief p2p_MatrixMul
@@ -176,8 +180,8 @@ int dram_MatrixMul(int& nvmeFd, int16_t* resPtr)
     int16_t* matB = (int16_t*)malloc(ROW*COL*sizeof(int16_t));
 
     /* flush cache line */
-    _mm_clflush((void*)matA);
-    _mm_clflush((void*)matB);
+    flush_cachelines((void*)matA);
+    flush_cachelines((void*)matB);
     
     /* read from SSD into DRAM */
     cout << "Trying to transfer Matrix from SSD into DRAM\n";
@@ -214,8 +218,8 @@ int dram_MatrixMul(int& nvmeFd, int16_t* resPtr)
             << std::fixed << gbpersec << "GB/s\n";
     
     /* flush cache line */
-    _mm_clflush((void*)matA);
-    _mm_clflush((void*)matB);
+    flush_cachelines((void*)matA);
+    flush_cachelines((void*)matB);
 
 /* Matrix Multiplication */
     std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
