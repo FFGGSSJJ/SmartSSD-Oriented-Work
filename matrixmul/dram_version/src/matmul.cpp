@@ -53,7 +53,7 @@ static void loadin(int32_t* in, hls::stream<int32_t>& inStream, int row, int col
 
 extern "C" {
 
-void matmul(int16_t* matA, int16_t* matB, int16_t* outC, int row, int col)
+void matmul(int* matA, int* matB, int* outC, int row, int col)
 {
 
     /* Creat local buffers */
