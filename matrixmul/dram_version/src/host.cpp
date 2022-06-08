@@ -65,7 +65,7 @@ void flush_cachelines(void* ptr)
  */
 int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int16_t* resPtr)
 {
-    int err, ret;
+    int err;
     cl::Kernel kernel;
 
     /* Allocate global buffers in the global memory of device, make it p2p ext buffer */
@@ -139,7 +139,7 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
 
     /* Calculate the transfer time and bandwidth */
-    cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd2 - p2pStart2).count();
+    cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
     dnsduration = (double)Time2;
     dsduration = dnsduration / ((double)1000000);
     gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
@@ -162,7 +162,6 @@ int dram_cpuMatrixMul(int16_t* resPtr)
 {
     if (resPtr == NULL) return EXIT_FAILURE;
 
-    int ret;
     /* Allocate matrix spaces in DRAM */
     int16_t* matA = (int16_t*)malloc(ROW*COL*sizeof(int16_t));
     int16_t* matB = (int16_t*)malloc(ROW*COL*sizeof(int16_t));
@@ -190,8 +189,8 @@ int dram_cpuMatrixMul(int16_t* resPtr)
 
     /* Calculate the time */
     cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
-    dnsduration = (double)Time2;
-    dsduration = dnsduration / ((double)1000000);
+    double dnsduration = (double)Time2;
+    double dsduration = dnsduration / ((double)1000000);
     std::cout << "Calculation time: " << dnsduration << " ns" << " | " << dsduration << " s\n";
 
     return EXIT_SUCCESS;
