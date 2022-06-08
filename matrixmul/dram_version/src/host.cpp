@@ -29,12 +29,12 @@ using std::endl;
 /* Macros */
 #define SSD2FPGA    0
 #define FPGA2SSD    1
-#define ROW         4096
-#define COL         4096
+#define ROW         100
+#define COL         100
 #define BytesPerNum 4
 #define BytesPerKB  1024
 #define BytesPerMB  1024*1024
-#define SIZE        ROW*COL*BytesPerNum // 32MB
+#define SIZE        ROW*COL*BytesPerNum // 64MB
 
 /* Global var for buffer size */
 size_t max_buffer = 16 * 1024 * 1024;   // 16MB

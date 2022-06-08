@@ -14,8 +14,8 @@
 #include <hls_stream.h>
 
 /* define */
-#define ROW         4096
-#define COL         4096
+#define ROW         100
+#define COL         100
 #define PARALLEL    0
 #define BytesPerNum 4
 #define BytesPerKB  1024
