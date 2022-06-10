@@ -134,8 +134,8 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     /* Set the kernel arguments and launch the kernel in sequential manner */
     for (int i = 0; i < TILE_ROW; i++) {
         for (int j = 0; j < TILE_COL; j++) {
-            OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(3, i));
-            OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(4, j));
+            OCL_CHECK(err, err = kernel.setArg(3, i));
+            OCL_CHECK(err, err = kernel.setArg(4, j));
 
             /* Launch the kernel */
             cout << "\nLaunch the Matrix Multiplication kernel " << i * TILE_ROW + j << endl;
