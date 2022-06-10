@@ -65,11 +65,13 @@ void matmul(int* matA, int* matB, int* outC, int tile_x, int tile_y)
     int32_t A[TILE_HEIGHT][TILE_WIDTH];
     int32_t B[TILE_HEIGHT][TILE_WIDTH];
     int32_t C[TILE_HEIGHT][TILE_WIDTH];
+    const int h = 512;
+    const int w = 512;
 
     /* Load matrix from global memory into local buffer */
 readA:
     for (int i = 0, r = 0, c = 0; i < TILE_HEIGHT*TILE_WIDTH; i++, c++) {
-#pragma HLS LOOP_TRIPCOUNT min = TILE_HEIGHT*TILE_WIDTH max = TILE_HEIGHT*TILE_WIDTH
+#pragma HLS LOOP_TRIPCOUNT min = h*w max = h*w
         if (c == TILE_WIDTH) {
             c = 0;
             r++;
@@ -79,7 +81,7 @@ readA:
 
 readB:
     for (int i = 0, r = 0, c = 0; i < TILE_HEIGHT*TILE_WIDTH; i++, c++) {
-#pragma HLS LOOP_TRIPCOUNT min = TILE_HEIGHT*TILE_WIDTH max = TILE_HEIGHT*TILE_WIDTH
+#pragma HLS LOOP_TRIPCOUNT min = h*w max = h*w
         if (c == TILE_WIDTH) {
             c = 0;
             r++;
@@ -90,12 +92,12 @@ readB:
     /* Multiplication */
 calculateC:
     for (int r = 0; r < TILE_HEIGHT; r++) {
-#pragma HLS LOOP_TRIPCOUNT min = TILE_HEIGHT max = TILE_HEIGHT
+#pragma HLS LOOP_TRIPCOUNT min = h max = h
         for (int c = 0; c < TILE_WIDTH; c++) {
             int32_t res = 0;
-    #pragma HLS LOOP_TRIPCOUNT min = TILE_WIDTH max = TILE_WIDTH
+    #pragma HLS LOOP_TRIPCOUNT min = w max = w
             for (int i = 0; i < TILE_HEIGHT; i++) {
-        #pragma HLS LOOP_TRIPCOUNT min = TILE_HEIGHT max = TILE_HEIGHT
+        #pragma HLS LOOP_TRIPCOUNT min = h max = h
                 res += A[r][i] * B[i][c];
             }  
             C[r][c] = res;
@@ -105,7 +107,7 @@ calculateC:
     /* Load matrix from local buffer into global memory */
 writeC:
     for (int i = 0, r = 0, c = 0; i < TILE_HEIGHT*TILE_WIDTH; i++, c++) {
-#pragma HLS LOOP_TRIPCOUNT min = TILE_HEIGHT*TILE_WIDTH max = TILE_HEIGHT*TILE_WIDTH
+#pragma HLS LOOP_TRIPCOUNT min = h*w max = h*w
         if (c == TILE_WIDTH) {
             c = 0;
             r++;
