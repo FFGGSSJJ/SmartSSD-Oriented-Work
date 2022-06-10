@@ -65,8 +65,8 @@ void matmul(int* matA, int* matB, int* outC, int tile_x, int tile_y)
     int32_t A[TILE_HEIGHT][TILE_WIDTH];
     int32_t B[TILE_HEIGHT][TILE_WIDTH];
     int32_t C[TILE_HEIGHT][TILE_WIDTH];
-    const int h = 512;
-    const int w = 512;
+    const int h = 256;
+    const int w = 256;
 
     /* Load matrix from global memory into local buffer */
 readA:
