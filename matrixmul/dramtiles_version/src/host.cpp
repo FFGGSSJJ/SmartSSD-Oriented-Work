@@ -139,13 +139,22 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
 
             /* Launch the kernel */
             cout << "\nLaunch the Matrix Multiplication kernel " << i * TILE_ROW + j << endl;
+
+            std::chrono::high_resolution_clock::time_point matmul_start = std::chrono::high_resolution_clock::now();
             OCL_CHECK(err, err = cmdq.enqueueTask(kernel));
+            std::chrono::high_resolution_clock::time_point matmul_end = std::chrono::high_resolution_clock::now();
             cmdq.finish();
+
+            /* Calculate kernel launch time */
+            cl_ulong matTime = std::chrono::duration_cast<std::chrono::microseconds>(matmul_end - matmul_start).count();
+            dnsduration = (double)matTime;
+            dsduration = dnsduration / ((double)1000000);
+            cout << "Kernel " << i * TILE_ROW + j << " execution time: " << dnsduration << "ns\n";
         }
     }
 
     /* transfer to load the result into DRAM */
-    cout << "Trying to transfer Matrix from FPGA into DRAM\n";
+    cout << "\nTrying to transfer Matrix from FPGA into DRAM\n";
     std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
     /* Transfer matrix C */
     for (int i = 0; i < iter; i++) {
@@ -161,7 +170,12 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
             << std::fixed << gbpersec << "GB/s\n";
 
-    /* */
+    /* free allocated space */
+    free(matAdram);
+    free(matBdram);
+
+    /* Unmap pointers */
+    cmdq.enqueueUnmapMemObject
     return EXIT_SUCCESS;
 }
 
@@ -178,6 +192,7 @@ int dram_cpuMatrixMul(int32_t* resPtr)
     if (resPtr == NULL) return EXIT_FAILURE;
 
     /* Allocate matrix spaces in DRAM */
+    cout << "Malloc and initialize matrix A and B in CPU DRAM\n";
     int32_t* matA = (int32_t*)malloc(ROW*COL*sizeof(int32_t));
     int32_t* matB = (int32_t*)malloc(ROW*COL*sizeof(int32_t));
 
@@ -192,12 +207,13 @@ int dram_cpuMatrixMul(int32_t* resPtr)
     flush_cachelines((void*)matB);
     
     /* Matrix Multiplication */
+    cout << "Perform Matrix Multiplication\n";
     std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
     for (int r = 0; r < ROW; r++) {
         for (int c = 0; c < COL; c++) {
-            for (int i = 0; i < ROW; i++) {
+            for (int i = 0; i < ROW; i++) 
                 resPtr[r*ROW + c] += matA[r*ROW + i] * matB[i*ROW + c];
-            }
+            cout << "Calculated element (" << r << "," << c << ")\n";
         }
     }
     std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
@@ -318,15 +334,21 @@ int main(int argc, char** argv)
     flush_cachelines((void*)matCcpu);
 
     /* Proceed for matrix multiplication */
+    cout << "\n---------------------------------------\n";
+    cout << "Perform Matrix Multiplication in Kernel\n";
+    cout << "---------------------------------------\n";
     if (EXIT_FAILURE == dram_devMatrixMul(context, cmdq, program, matCdev))
         return EXIT_FAILURE;
 
-    if (EXIT_SUCCESS == dram_cpuMatrixMul(matCcpu))
-        return EXIT_FAILURE;
+    // cout << "\n---------------------------------------\n";
+    // cout << "Perform Matrix Multiplication in Host\n";
+    // cout << "---------------------------------------\n";
+    // if (EXIT_SUCCESS == dram_cpuMatrixMul(matCcpu))
+    //     return EXIT_FAILURE;
 
-    /* Check is the result matches */
-    if (memcmp(matCcpu, matCdev, (size_t)SIZE) == 0)
-        cout << "TEST PASSED" << std::endl;
+    // /* Check is the result matches */
+    // if (memcmp(matCcpu, matCdev, (size_t)SIZE) == 0)
+    //     cout << "TEST PASSED" << std::endl;
     
     return EXIT_SUCCESS;    
 }

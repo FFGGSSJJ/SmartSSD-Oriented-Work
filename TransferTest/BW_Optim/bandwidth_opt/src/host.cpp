@@ -45,7 +45,7 @@ void flush_cachelines(void* ptr)
     } while(p <= (const char*)endline);
 }
 
-int dram_to_ssd(int& nvmeFd,
+int to_ssd_test(int& nvmeFd,
                     cl::Context context,
                     cl::CommandQueue q,
                     cl::Program program,
@@ -101,7 +101,7 @@ int dram_to_ssd(int& nvmeFd,
     return 0;
 }
 
-void ssd_to_dram(int& nvmeFd,
+void from_ssd_test(int& nvmeFd,
                      cl::Context context,
                      cl::CommandQueue q,
                      cl::Program program,
