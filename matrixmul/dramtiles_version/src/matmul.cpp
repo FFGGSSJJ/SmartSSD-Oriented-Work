@@ -14,8 +14,13 @@
 #include <hls_stream.h>
 
 /* define */
-#define ROW         512
-#define COL         512
+#define WIDTH       4096
+#define HEIGHT      4096
+#define TILE_WIDTH  512
+#define TILE_HEIGHT 512
+#define TILE_ROW    WIDTH/TILE_WIDTH
+#define TILE_COL    HEIGHT/TILE_HEIGHT
+#define TILE_NUM    TILE_ROW * TILE_COL
 #define PARALLEL    0
 #define BytesPerNum 4
 #define BytesPerKB  1024
@@ -53,44 +58,44 @@ static void loadin(int32_t* in, hls::stream<int32_t>& inStream, int row, int col
 
 extern "C" {
 
-void matmul(int* matA, int* matB, int* outC, int row, int col)
+void matmul(int* matA, int* matB, int* outC, int tile_x, int tile_y)
 {
 
     /* Creat local buffers */
-    int32_t A[ROW][COL];
-    int32_t B[ROW][COL];
-    int32_t C[ROW][COL];
+    int32_t A[TILE_HEIGHT][TILE_WIDTH];
+    int32_t B[TILE_HEIGHT][TILE_WIDTH];
+    int32_t C[TILE_HEIGHT][TILE_WIDTH];
 
     /* Load matrix from global memory into local buffer */
 readA:
-    for (int i = 0, r = 0, c = 0; i < row*col; i++, c++) {
-#pragma HLS LOOP_TRIPCOUNT min = row*col max = row*col
-        if (c == col) {
+    for (int i = 0, r = 0, c = 0; i < TILE_HEIGHT*TILE_WIDTH; i++, c++) {
+#pragma HLS LOOP_TRIPCOUNT min = TILE_HEIGHT*TILE_WIDTH max = TILE_HEIGHT*TILE_WIDTH
+        if (c == TILE_WIDTH) {
             c = 0;
             r++;
         }
-        A[r][c] = (int32_t)matA[i];
+        A[r][c] = (int32_t)matA[(tile_x*TILE_HEIGHT)*WIDTH + tile_y*TILE_WIDTH + i];
     }
 
 readB:
-    for (int i = 0, r = 0, c = 0; i < row*col; i++, c++) {
-#pragma HLS LOOP_TRIPCOUNT min = row*col max = row*col
-        if (c == col) {
+    for (int i = 0, r = 0, c = 0; i < TILE_HEIGHT*TILE_WIDTH; i++, c++) {
+#pragma HLS LOOP_TRIPCOUNT min = TILE_HEIGHT*TILE_WIDTH max = TILE_HEIGHT*TILE_WIDTH
+        if (c == TILE_WIDTH) {
             c = 0;
             r++;
         }
-        B[r][c] = (int32_t)matB[i];
+        B[r][c] = (int32_t)matB[(tile_x*TILE_HEIGHT)*WIDTH + tile_y*TILE_WIDTH + i];
     }
 
     /* Multiplication */
 calculateC:
-    for (int r = 0; r < row; r++) {
-#pragma HLS LOOP_TRIPCOUNT min = row max = row
-        for (int c = 0; c < col; c++) {
+    for (int r = 0; r < TILE_HEIGHT; r++) {
+#pragma HLS LOOP_TRIPCOUNT min = TILE_HEIGHT max = TILE_HEIGHT
+        for (int c = 0; c < TILE_WIDTH; c++) {
             int32_t res = 0;
-    #pragma HLS LOOP_TRIPCOUNT min = col max = col
-            for (int i = 0; i < row; i++) {
-        #pragma HLS LOOP_TRIPCOUNT min = row max = row
+    #pragma HLS LOOP_TRIPCOUNT min = TILE_WIDTH max = TILE_WIDTH
+            for (int i = 0; i < TILE_HEIGHT; i++) {
+        #pragma HLS LOOP_TRIPCOUNT min = TILE_HEIGHT max = TILE_HEIGHT
                 res += A[r][i] * B[i][c];
             }  
             C[r][c] = res;
@@ -99,13 +104,13 @@ calculateC:
 
     /* Load matrix from local buffer into global memory */
 writeC:
-    for (int i = 0, r = 0, c = 0; i < row*col; i++, c++) {
-#pragma HLS LOOP_TRIPCOUNT min = row*col max = row*col
-        if (c == col) {
+    for (int i = 0, r = 0, c = 0; i < TILE_HEIGHT*TILE_WIDTH; i++, c++) {
+#pragma HLS LOOP_TRIPCOUNT min = TILE_HEIGHT*TILE_WIDTH max = TILE_HEIGHT*TILE_WIDTH
+        if (c == TILE_WIDTH) {
             c = 0;
             r++;
         }
-        outC[i] = (int32_t)C[r][c];
+        outC[(tile_x*TILE_HEIGHT)*WIDTH + tile_y*TILE_WIDTH + i] += (int32_t)C[r][c];
     }
 
     /*end*/
