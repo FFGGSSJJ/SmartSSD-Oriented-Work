@@ -127,9 +127,9 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
             << std::fixed << gbpersec << "GB/s\n";
 
     /* Set some args */
-    OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(0, matA));
-    OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(1, matB));
-    OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(2, matC));
+    OCL_CHECK(err, err = kernel.setArg(0, matA));
+    OCL_CHECK(err, err = kernel.setArg(1, matB));
+    OCL_CHECK(err, err = kernel.setArg(2, matC));
 
     /* Set the kernel arguments and launch the kernel in sequential manner */
     for (int i = 0; i < TILE_ROW; i++) {
