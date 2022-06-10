@@ -71,7 +71,7 @@ void flush_cachelines(void* ptr)
 int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int32_t* resPtr)
 {
     int err;
-    cl::Kernel kernel[TILE_NUM];
+    cl::Kernel kernel;
 
     /* Allocate global buffers in the global memory of device, make it p2p ext buffer */
     cl::Buffer matA(context, CL_MEM_READ_ONLY, (size_t)SIZE, nullptr, &err);
@@ -96,10 +96,9 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     }
 
     /* Initialize the kernels */
-    for (int i = 0; i < TILE_NUM; i++) {
-        std::string krn_name = "matmulTile" + std::to_string(i);
-        OCL_CHECK(err, kernel[i] = cl::Kernel(program, krn_name.c_str(), &err));
-    }
+    std::string krn_name = "matmul";
+    OCL_CHECK(err, kernel = cl::Kernel(program, krn_name.c_str(), &err));
+    
     
 
     /* transfer to load Matrix into FPGA */
@@ -127,23 +126,22 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
             << std::fixed << gbpersec << "GB/s\n";
 
-    /* Set the kernel arguments*/
+    /* Set some args */
+    OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(0, matA));
+    OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(1, matB));
+    OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(2, matC));
+
+    /* Set the kernel arguments and launch the kernel in sequential manner */
     for (int i = 0; i < TILE_ROW; i++) {
         for (int j = 0; j < TILE_COL; j++) {
-            OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(0, matA));
-            OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(1, matB));
-            OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(2, matC));
             OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(3, i));
             OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(4, j));
-        }
-    }
-    
 
-    /* Launch the Matrix Multiplication kernels */
-    cout << "\nLaunch the Matrix Multiplication kernel\n";
-    for (int i = 0; i < TILE_NUM; i++) {
-        OCL_CHECK(err, err = cmdq.enqueueTask(kernel[i]));
-        cmdq.finish();
+            /* Launch the kernel */
+            cout << "\nLaunch the Matrix Multiplication kernel " << i * TILE_ROW + j << endl;
+            OCL_CHECK(err, err = cmdq.enqueueTask(kernel));
+            cmdq.finish();
+        }
     }
 
     /* transfer to load the result into DRAM */
