@@ -16,8 +16,8 @@
 /* define */
 #define WIDTH       4096
 #define HEIGHT      4096
-#define TILE_WIDTH  512
-#define TILE_HEIGHT 512
+#define TILE_WIDTH  256
+#define TILE_HEIGHT 256
 #define TILE_ROW    WIDTH/TILE_WIDTH
 #define TILE_COL    HEIGHT/TILE_HEIGHT
 #define TILE_NUM    TILE_ROW * TILE_COL

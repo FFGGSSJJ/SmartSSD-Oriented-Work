@@ -31,8 +31,8 @@ using std::endl;
 #define FPGA2SSD    1
 #define ROW         4096
 #define COL         4096
-#define TILE_WIDTH  512
-#define TILE_HEIGHT 512
+#define TILE_WIDTH  256
+#define TILE_HEIGHT 256
 #define TILE_ROW    ROW/TILE_HEIGHT
 #define TILE_COL    COL/TILE_WIDTH
 #define TILE_NUM    TILE_ROW * TILE_COL
