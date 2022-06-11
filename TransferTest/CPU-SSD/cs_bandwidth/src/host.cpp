@@ -15,6 +15,8 @@
 */
 
 // OpenCL utility layer include
+#include <algorithm>
+#include <chrono>
 #include <fcntl.h>
 #include <fstream>
 #include <iomanip>
