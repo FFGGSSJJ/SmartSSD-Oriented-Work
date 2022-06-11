@@ -15,8 +15,6 @@
 */
 
 // OpenCL utility layer include
-#include "cmdlineparser.h"
-#include "xcl2.hpp"
 #include <fcntl.h>
 #include <fstream>
 #include <iomanip>
@@ -24,6 +22,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <vector>
+#include <x86intrin.h>
 
 #define KB  1024
 #define MB  1024 * KB
@@ -32,11 +31,22 @@ size_t max_buffer = 512 * 1024 * 1024;
 size_t min_buffer = 4 * 1024;
 size_t max_size = 512 * 1024 * 1024; // 512MB
 
-int p2p_host_to_ssd(int& nvmeFd,
-                    cl::Context context,
-                    cl::CommandQueue q,
-                    cl::Program program,
-                    std::vector<int, aligned_allocator<int> > source_input_A) {
+
+void flush_cachelines(void* ptr)
+{
+    const int LINESIZE = 64;
+    const char* p = (const char*)ptr;
+    uintptr_t endline = ((uintptr_t)ptr + max_size - 1) | (LINESIZE-1);
+
+    do {   // flush while p is in a cache line that contains any of the struct
+         _mm_clflush(p);
+          p += LINESIZE;
+    } while(p <= (const char*)endline);
+}
+
+
+
+int ssd_to_dram(int& nvmeFd) {
     int err;
     int ret = 0;
     size_t vector_size_bytes = max_buffer;
@@ -48,24 +58,21 @@ int p2p_host_to_ssd(int& nvmeFd,
     /* Allocate space in CUP DRAM */
     int32_t* dram_ptr = (int32_t*)malloc(max_buffer);
     
-    /* Start p2p transfer using various buffer sizes */
+    /* Start transfer using various buffer sizes */
     std::cout << "Start  Write of various buffer sizes from SSD to CPU DRAM\n" << std::endl;
     for (datasize = 128 * MB; datasize <= max_size; datasize *= 2) {
         std::cout << "\n------------------------------------------\n";
         std::cout << "   Data Size: " << datasize/1024/1024 << "MB";
         std::cout << "\n------------------------------------------\n";
         for (bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
-            std::string size_str = xcl::convert_size(bufsize);
 
             int iter = datasize/bufsize;
-            if (xcl::is_emulation()) 
-                iter = 2; // Reducing iteration to run faster in emulation flow.
 
             std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
             for (int i = 0; i < iter; i++) {
-                ret = pread(nvmeFd, (void*)p2pPtr, bufsize, 0);
+                ret = read(nvmeFd, (void*)dram_ptr, bufsize, 0);
                 if (ret == -1) {
-                    std::cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << std::endl;
+                    std::cout << "read() failed, err: " << ret << ", line: " << __LINE__ << std::endl;
                     return EXIT_FAILURE;
                 }
             }
@@ -74,65 +81,40 @@ int p2p_host_to_ssd(int& nvmeFd,
             double dnsduration = (double)p2pTime;
             double dsduration = dnsduration / ((double)1000000);
             double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
-            std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
+            std::cout << "Buffer = " << bufsize << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
                     << std::fixed << gbpersec << "GB/s\n";
+            
+            flush_cachelines((void*)dram_ptr);
         }
     }
     return 0;
 }
 
-void p2p_ssd_to_host(int& nvmeFd,
-                     cl::Context context,
-                     cl::CommandQueue q,
-                     cl::Program program,
-                     std::vector<int, aligned_allocator<int> >* source_input_A) {
+void dram_to_ssd(int& nvmeFd) {
     int err;
     size_t vector_size_bytes = max_buffer;
 
-    // Allocate Buffer in Global Memory
-    cl_mem_ext_ptr_t inExt;
-    inExt = {XCL_MEM_EXT_P2P_BUFFER, nullptr, 0};
+    /* Allocate space in CUP DRAM */
+    int32_t* dram_ptr = (int32_t*)malloc(max_buffer);
 
-    OCL_CHECK(err, cl::Buffer buffer_input(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, vector_size_bytes, &inExt,
-                                           &err));
-
-    /* Map buffer */
-    std::cout << "\nMap P2P device buffers to host access pointers\n" << std::endl;
-    void* p2pPtr1 = q.enqueueMapBuffer(buffer_input,               // buffer
-                                       CL_TRUE,                    // blocking call
-                                       CL_MAP_READ | CL_MAP_WRITE, // Indicates we will be writing
-                                       0,                          // buffer offset
-                                       vector_size_bytes,          // size in bytes
-                                       nullptr, nullptr,
-                                       &err); // error code
-    q.finish();
-
-
-    /* Initialize */
-    for (uint32_t i = 0; i < vector_size_bytes/sizeof(int32_t); i++) {
-        ((int32_t*)p2pPtr1)[i] = (int32_t)1;
-    }
 
     /* Get the size of the file */
     size_t datasize = 0;
     size_t bufsize = 4 * KB;
 
-    std::cout << "Start P2P write of various buffer sizes from device buffers to SSD\n" << std::endl;
+    std::cout << "Start write of various buffer sizes from CPU DRAM to SSD\n" << std::endl;
     for (datasize = 128 * MB; datasize <= max_size; datasize *= 2) {
         std::cout << "\n------------------------------------------\n";
         std::cout << "   Data Size: " << datasize/1024/1024 << "MB";
         std::cout << "\n------------------------------------------\n";
         for (bufsize = 4 * KB; bufsize <= datasize; bufsize *= 2) {
-            std::string size_str = xcl::convert_size(bufsize);
 
             int iter = datasize / bufsize;
-            if (xcl::is_emulation()) 
-                iter = 2; // Reducing iteration to run faster in emulation flow.
             
             std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
             for (int i = 0; i < iter; i++) {
-                if (pwrite(nvmeFd, (void*)p2pPtr1, bufsize, 0) <= 0) {
-                    std::cerr << "ERR: pwrite failed: "
+                if (write(nvmeFd, (void*)dram_ptr, bufsize, 0) <= 0) {
+                    std::cerr << "ERR: write failed: "
                             << " error: " << strerror(errno) << std::endl;
                     exit(EXIT_FAILURE);
                 }
@@ -144,6 +126,8 @@ void p2p_ssd_to_host(int& nvmeFd,
             double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
             std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
                     << std::fixed << gbpersec << "GB/s\n";
+
+            flush_cachelines((void*)dram_ptr);
         }
     }
 }
@@ -154,19 +138,15 @@ int main(int argc, char** argv) {
 
     // Switches
     //**************//"<Full Arg>",  "<Short Arg>", "<Description>", "<Default>"
-    parser.addSwitch("--xclbin_file", "-x", "input binary file string", "");
     parser.addSwitch("--file_path", "-p", "file path string", "");
     parser.addSwitch("--input_file", "-f", "input file string", "");
-    parser.addSwitch("--device", "-d", "device id", "0");
     parser.parse(argc, argv);
 
     // Read settings
-    auto binaryFile = parser.value("xclbin_file");
     std::string filepath = parser.value("file_path");
-    std::string dev_id = parser.value("device");
     std::string filename;
 
-    if (argc < 5) {
+    if (argc < 3) {
         parser.printHelp();
         return EXIT_FAILURE;
     }
@@ -181,68 +161,10 @@ int main(int argc, char** argv) {
     }
 
     int nvmeFd = -1;
-    if (xcl::is_emulation()) {
-        max_buffer = 16 * 1024;
-    }
 
-    cl_int err;
-    cl::Context context;
-    cl::CommandQueue q;
-    std::vector<int, aligned_allocator<int> > source_input_A(max_buffer);
-
-    // OPENCL HOST CODE AREA START
-    // get_xil_devices() is a utility API which will find the xilinx
-    // platforms and will return list of devices connected to Xilinx platform
-    auto devices = xcl::get_xil_devices();
-    // read_binary_file() is a utility API which will load the binaryFile
-    // and will return the pointer to file buffer.
-    auto fileBuf = xcl::read_binary_file(binaryFile);
-    cl::Program::Binaries bins{{fileBuf.data(), fileBuf.size()}};
-    cl::Program program;
-
-    auto pos = dev_id.find(":");
-    cl::Device device;
-    if (pos == std::string::npos) {
-        uint32_t device_index = stoi(dev_id);
-        if (device_index >= devices.size()) {
-            std::cout << "The device_index provided using -d flag is outside the range of "
-                         "available devices\n";
-            return EXIT_FAILURE;
-        }
-        device = devices[device_index];
-    } else {
-        if (xcl::is_emulation()) {
-            std::cout << "Device bdf is not supported for the emulation flow\n";
-            return EXIT_FAILURE;
-        }
-        device = xcl::find_device_bdf(devices, dev_id);
-    }
-
-    if (xcl::is_hw_emulation()) {
-        auto device_name = device.getInfo<CL_DEVICE_NAME>();
-        if (device_name.find("2018") != std::string::npos) {
-            std::cout << "[INFO]: The example is not supported for " << device_name
-                      << " this platform for hw_emu. Please try other flows." << '\n';
-            return EXIT_SUCCESS;
-        }
-    }
-
-    // Creating Context and Command Queue for selected Device
-    OCL_CHECK(err, context = cl::Context(device, nullptr, nullptr, nullptr, &err));
-    OCL_CHECK(err, q = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &err));
-    std::cout << "Trying to program device[" << dev_id << "]: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
-    program = cl::Program(context, {device}, bins, nullptr, &err);
-    if (err != CL_SUCCESS) {
-        std::cout << "Failed to program device[" << dev_id << "] with xclbin file!\n";
-        exit(EXIT_FAILURE);
-    } else
-        std::cout << "Device[" << dev_id << "]: program successful!\n";
-
-
-
-    // P2P transfer from SSD to host
+    // transfer from SSD to host
     std::cout << "############################################################\n";
-    std::cout << "                  Writing data to SSD                       \n";
+    std::cout << "           Writing data from CPU DRAM to SSD                       \n";
     std::cout << "############################################################\n";
 
     nvmeFd = open(filename.c_str(), O_RDWR | O_DIRECT);
@@ -252,13 +174,13 @@ int main(int argc, char** argv) {
     }
     std::cout << "INFO: Successfully opened NVME SSD " << filename << std::endl;
 
-    p2p_ssd_to_host(nvmeFd, context, q, program, &source_input_A);
+    dram_to_ssd(nvmeFd);
     (void)close(nvmeFd);
 
 
     // P2P transfer from host to SSD
     std::cout << "############################################################\n";
-    std::cout << "                  Reading data from SSD                       \n";
+    std::cout << "             Reading data from SSD to CPU DRAM                       \n";
     std::cout << "############################################################\n";
     // Get access to the NVMe SSD.
     nvmeFd = open(filename.c_str(), O_RDWR | O_DIRECT);
@@ -268,7 +190,7 @@ int main(int argc, char** argv) {
     }
     std::cout << "INFO: Successfully opened NVME SSD " << filename << std::endl;
     int ret = 0;
-    ret = p2p_host_to_ssd(nvmeFd, context, q, program, source_input_A);
+    ret = ssd_to_dram(nvmeFd);
     (void)close(nvmeFd);
     if (ret != 0) return EXIT_FAILURE;
 
