@@ -174,8 +174,13 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     free(matAdram);
     free(matBdram);
 
+    for (int i = 0; i < ROW*COL; i++) {
+        if (resPtr[i] != ROW) {
+            return EXIT_FAILURE;
+        }
+    }
     /* Unmap pointers */
-    cmdq.enqueueUnmapMemObject
+    //cmdq.enqueueUnmapMemObject
     return EXIT_SUCCESS;
 }
 
@@ -339,6 +344,7 @@ int main(int argc, char** argv)
     cout << "---------------------------------------\n";
     if (EXIT_FAILURE == dram_devMatrixMul(context, cmdq, program, matCdev))
         return EXIT_FAILURE;
+    cout << "TEST PASSED\n";
 
     // cout << "\n---------------------------------------\n";
     // cout << "Perform Matrix Multiplication in Host\n";
