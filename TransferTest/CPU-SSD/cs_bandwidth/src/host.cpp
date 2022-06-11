@@ -15,6 +15,7 @@
 */
 
 // OpenCL utility layer include
+#include "cmdlineparser.h"
 #include <fcntl.h>
 #include <fstream>
 #include <iomanip>
@@ -70,7 +71,7 @@ int ssd_to_dram(int& nvmeFd) {
 
             std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
             for (int i = 0; i < iter; i++) {
-                ret = read(nvmeFd, (void*)dram_ptr, bufsize, 0);
+                ret = read(nvmeFd, (void*)dram_ptr, bufsize);
                 if (ret == -1) {
                     std::cout << "read() failed, err: " << ret << ", line: " << __LINE__ << std::endl;
                     return EXIT_FAILURE;
@@ -113,14 +114,14 @@ void dram_to_ssd(int& nvmeFd) {
             
             std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
             for (int i = 0; i < iter; i++) {
-                if (write(nvmeFd, (void*)dram_ptr, bufsize, 0) <= 0) {
+                if (write(nvmeFd, (void*)dram_ptr, bufsize) <= 0) {
                     std::cerr << "ERR: write failed: "
                             << " error: " << strerror(errno) << std::endl;
                     exit(EXIT_FAILURE);
                 }
             }
             std::chrono::high_resolution_clock::time_point p2pEnd = std::chrono::high_resolution_clock::now();
-            cl_ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart).count();
+            ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart).count();
             double dnsduration = (double)p2pTime;
             double dsduration = dnsduration / ((double)1000000);
             double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
