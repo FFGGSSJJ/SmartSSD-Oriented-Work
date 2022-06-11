@@ -140,21 +140,6 @@ int main(int argc, char** argv) {
     std::string filename = filepath;
     int nvmeFd = -1;
 
-    // transfer from SSD to host
-    std::cout << "############################################################\n";
-    std::cout << "           Writing data from CPU DRAM to SSD                       \n";
-    std::cout << "############################################################\n";
-
-    nvmeFd = open(filename.c_str(), O_RDWR | O_DIRECT);
-    if (nvmeFd < 0) {
-        std::cerr << "ERROR: open " << filename << "failed: " << std::endl;
-        return EXIT_FAILURE;
-    }
-    std::cout << "INFO: Successfully opened NVME SSD " << filename << std::endl;
-
-    dram_to_ssd(nvmeFd);
-    (void)close(nvmeFd);
-
 
     // P2P transfer from host to SSD
     std::cout << "############################################################\n";
@@ -171,6 +156,22 @@ int main(int argc, char** argv) {
     ret = ssd_to_dram(nvmeFd);
     (void)close(nvmeFd);
     if (ret != 0) return EXIT_FAILURE;
+
+
+    // transfer from SSD to host
+    std::cout << "############################################################\n";
+    std::cout << "           Writing data from CPU DRAM to SSD                       \n";
+    std::cout << "############################################################\n";
+
+    nvmeFd = open(filename.c_str(), O_RDWR | O_DIRECT);
+    if (nvmeFd < 0) {
+        std::cerr << "ERROR: open " << filename << "failed: " << std::endl;
+        return EXIT_FAILURE;
+    }
+    std::cout << "INFO: Successfully opened NVME SSD " << filename << std::endl;
+
+    dram_to_ssd(nvmeFd);
+    (void)close(nvmeFd);
 
 
     std::cout << "TEST PASSED" << std::endl;
