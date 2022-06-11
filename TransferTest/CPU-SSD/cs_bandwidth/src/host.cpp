@@ -116,8 +116,7 @@ void dram_to_ssd(int& nvmeFd) {
             std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
             for (int i = 0; i < iter; i++) {
                 if (write(nvmeFd, (void*)dram_ptr, bufsize) <= 0) {
-                    std::cerr << "ERR: write failed: "
-                            << " error: " << strerror(errno) << std::endl;
+                    std::cout << "wirte failed\n";
                     exit(EXIT_FAILURE);
                 }
             }
