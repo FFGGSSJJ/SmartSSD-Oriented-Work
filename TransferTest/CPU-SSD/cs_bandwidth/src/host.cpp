@@ -97,7 +97,7 @@ void dram_to_ssd(int& nvmeFd) {
     size_t vector_size_bytes = max_buffer;
 
     /* Allocate space in CUP DRAM */
-    int32_t* dram_ptr = (int32_t*)malloc(max_buffer);
+    int32_t* dram_ptr = (int32_t*)calloc(1, max_buffer);
 
 
     /* Get the size of the file */
