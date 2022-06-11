@@ -64,7 +64,6 @@ void matmul(int* matA, int* matB, int* outC, int tile_x, int tile_y)
     /* Creat local buffers */
     int32_t A[TILE_HEIGHT][TILE_WIDTH];
     int32_t B[TILE_HEIGHT][TILE_WIDTH];
-    int32_t C[TILE_HEIGHT][TILE_WIDTH];
     const int h = 256;
     const int w = 256;
 
@@ -100,19 +99,8 @@ calculateC:
         #pragma HLS LOOP_TRIPCOUNT min = h max = h
                 res += A[r][i] * B[i][c];
             }  
-            C[r][c] = res;
+            outC[(tile_x*TILE_HEIGHT)*WIDTH + tile_y*TILE_WIDTH + i] += res;
         }
-    }
-
-    /* Load matrix from local buffer into global memory */
-writeC:
-    for (int i = 0, r = 0, c = 0; i < TILE_HEIGHT*TILE_WIDTH; i++, c++) {
-#pragma HLS LOOP_TRIPCOUNT min = h*w max = h*w
-        if (c == TILE_WIDTH) {
-            c = 0;
-            r++;
-        }
-        outC[(tile_x*TILE_HEIGHT)*WIDTH + tile_y*TILE_WIDTH + i] += (int32_t)C[r][c];
     }
 
     /*end*/
