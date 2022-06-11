@@ -72,7 +72,7 @@ int ssd_to_dram(int& nvmeFd) {
 
             std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
             for (int i = 0; i < iter; i++) {
-                ret = read(nvmeFd, (void*)dram_ptr, bufsize);
+                ret = pread(nvmeFd, (void*)dram_ptr, bufsize, 0);
                 if (ret == -1) {
                     std::cout << "read() failed, err: " << ret << ", line: " << __LINE__ << std::endl;
                     return EXIT_FAILURE;
@@ -115,7 +115,7 @@ void dram_to_ssd(int& nvmeFd) {
             
             std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
             for (int i = 0; i < iter; i++) {
-                if (write(nvmeFd, (void*)dram_ptr, bufsize) <= 0) {
+                if (pwrite(nvmeFd, (void*)dram_ptr, bufsize, 0) <= 0) {
                     std::cout << "wirte failed\n";
                     exit(EXIT_FAILURE);
                 }
