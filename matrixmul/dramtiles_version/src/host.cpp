@@ -71,7 +71,7 @@ void flush_cachelines(void* ptr)
 int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int32_t* resPtr)
 {
     int err;
-    cl::Kernel kernel;
+    cl::Kernel kernel[TILE_NUM];
 
     /* Allocate global buffers in the global memory of device, make it p2p ext buffer */
     cl::Buffer matA(context, CL_MEM_READ_ONLY, (size_t)SIZE, nullptr, &err);
@@ -97,7 +97,8 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
 
     /* Initialize the kernels */
     std::string krn_name = "matmul";
-    OCL_CHECK(err, kernel = cl::Kernel(program, krn_name.c_str(), &err));
+    for (int i = 0; i < TILE_NUM; i++)
+        OCL_CHECK(err, kernel[i] = cl::Kernel(program, krn_name.c_str(), &err));
     
     
 
@@ -127,21 +128,23 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
             << std::fixed << gbpersec << "GB/s\n";
 
     /* Set some args */
-    OCL_CHECK(err, err = kernel.setArg(0, matA));
-    OCL_CHECK(err, err = kernel.setArg(1, matB));
-    OCL_CHECK(err, err = kernel.setArg(2, matC));
+    for (int i = 0; i < TILE_NUM; i++) {
+        OCL_CHECK(err, err = kernel[i].setArg(0, matA));
+        OCL_CHECK(err, err = kernel[i].setArg(1, matB));
+        OCL_CHECK(err, err = kernel[i].setArg(2, matC));
+    }
 
     /* Set the kernel arguments and launch the kernel in sequential manner */
     for (int i = 0; i < TILE_ROW; i++) {
         for (int j = 0; j < TILE_COL; j++) {
-            OCL_CHECK(err, err = kernel.setArg(3, i));
-            OCL_CHECK(err, err = kernel.setArg(4, j));
+            OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(3, i));
+            OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(4, j));
 
             /* Launch the kernel */
             cout << "\nLaunch the Matrix Multiplication kernel " << i * TILE_ROW + j << endl;
 
             std::chrono::high_resolution_clock::time_point matmul_start = std::chrono::high_resolution_clock::now();
-            OCL_CHECK(err, err = cmdq.enqueueTask(kernel));
+            OCL_CHECK(err, err = cmdq.enqueueTask(kernel[i*TILE_ROW + j]));
             std::chrono::high_resolution_clock::time_point matmul_end = std::chrono::high_resolution_clock::now();
             cmdq.finish();
 
@@ -176,7 +179,7 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
 
     for (int i = 0; i < ROW*COL; i++) {
         if (resPtr[i] != ROW) {
-            return EXIT_FAILURE;
+            cout << "result" << i << ": " << resPtr[i] << endl;
         }
     }
     /* Unmap pointers */
