@@ -15,7 +15,6 @@
 */
 
 // OpenCL utility layer include
-#include "cmdlineparser.h"
 #include <fcntl.h>
 #include <fstream>
 #include <iomanip>
@@ -78,7 +77,7 @@ int ssd_to_dram(int& nvmeFd) {
                 }
             }
             std::chrono::high_resolution_clock::time_point p2pEnd = std::chrono::high_resolution_clock::now();
-            cl_ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart).count();
+            long p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart).count();
             double dnsduration = (double)p2pTime;
             double dsduration = dnsduration / ((double)1000000);
             double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
@@ -121,11 +120,11 @@ void dram_to_ssd(int& nvmeFd) {
                 }
             }
             std::chrono::high_resolution_clock::time_point p2pEnd = std::chrono::high_resolution_clock::now();
-            ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart).count();
+            long p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart).count();
             double dnsduration = (double)p2pTime;
             double dsduration = dnsduration / ((double)1000000);
             double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
-            std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
+            std::cout << "Buffer = " << bufsize << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
                     << std::fixed << gbpersec << "GB/s\n";
 
             flush_cachelines((void*)dram_ptr);
@@ -134,33 +133,10 @@ void dram_to_ssd(int& nvmeFd) {
 }
 
 int main(int argc, char** argv) {
-    // Command Line Parser
-    sda::utils::CmdLineParser parser;
-
-    // Switches
-    //**************//"<Full Arg>",  "<Short Arg>", "<Description>", "<Default>"
-    parser.addSwitch("--file_path", "-p", "file path string", "");
-    parser.addSwitch("--input_file", "-f", "input file string", "");
-    parser.parse(argc, argv);
 
     // Read settings
-    std::string filepath = parser.value("file_path");
-    std::string filename;
-
-    if (argc < 3) {
-        parser.printHelp();
-        return EXIT_FAILURE;
-    }
-
-    if (filepath.empty()) {
-        std::cout << "\nWARNING: As file path is not provided using -p option, going with -f option which is local "
-                     "file testing. Please use -p option, if looking for actual p2p operation on NVMe drive.\n";
-        filename = parser.value("input_file");
-    } else {
-        std::cout << "\nWARNING: Ignoring -f option when -p options is set. -p has high precedence over -f.\n";
-        filename = filepath;
-    }
-
+    std::string filepath = "/smartssd/gf9/matrix_band/int4096x4096";
+    std::string filename = filepath;
     int nvmeFd = -1;
 
     // transfer from SSD to host
