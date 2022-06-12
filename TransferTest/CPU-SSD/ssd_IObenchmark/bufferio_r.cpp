@@ -24,14 +24,17 @@ uint64_t NowMicros() {
 }
 
 void reader(int index) {
+  std::cout << "Open SmartSSD file\n";
   //std::string fname = "data" + std::to_string(index);
   std::string fname = "/smartssd/gf9/matrix_band/int4096x4096";
-  
+
   int fd = ::open(fname.c_str(), O_NOATIME | O_RDWR, 0644);
 
   void* buffer = NULL;
   posix_memalign(&buffer, getpagesize(), kReadOnceByteSize);
   uint64_t offset = 0;
+
+  std::cout << "Start read from SSD\n";
   for (int32_t i = 0; i < kReaderCountPerThread; i++) {
     pread64(fd, buffer, kReadOnceByteSize, offset);
     offset += kReadOnceByteSize;
@@ -48,6 +51,7 @@ int main() {
     std::thread worker(reader, i);
     threads.push_back(std::move(worker));
   }
+  std::cout << "Read starts\n";
   for (int i = 0; i < kConcurrency; i++) {
     threads[i].join();
   }

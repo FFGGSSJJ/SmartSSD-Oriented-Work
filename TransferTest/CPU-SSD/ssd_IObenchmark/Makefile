@@ -1,5 +1,5 @@
 CXX = g++
-PLATFORM_LDFLAGS = -lpthread
+PLATFORM_LDFLAGS = -pthread
 PLATFORM_CXXFLAGS = -std=c++11
 PROFILING_FLAGS=-pg
 OPT=
