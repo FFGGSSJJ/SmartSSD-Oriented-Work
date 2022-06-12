@@ -124,7 +124,7 @@ void p2p_ssd_to_host(int& nvmeFd,
 
     /* Initialize */
     for (uint32_t i = 0; i < vector_size_bytes/sizeof(int32_t); i++) {
-        ((int32_t*)p2pPtr1)[i] = (int32_t)1;
+        ((int32_t*)p2pPtr1)[i] = (int32_t)i;
     }
 
     /* Get the size of the file */
