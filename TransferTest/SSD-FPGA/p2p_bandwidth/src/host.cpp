@@ -28,9 +28,9 @@
 #define KB  1024
 #define MB  1024 * KB
 
-size_t max_buffer = 512 * 1024 * 1024;
+size_t max_buffer = 2048 * 1024 * 1024;
 size_t min_buffer = 4 * 1024;
-size_t max_size = 512 * 1024 * 1024; // 512MB
+size_t max_size = 2048 * 1024 * 1024; // 2GB
 
 int p2p_host_to_ssd(int& nvmeFd,
                     cl::Context context,
