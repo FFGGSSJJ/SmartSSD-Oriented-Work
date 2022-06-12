@@ -55,33 +55,6 @@ extern "C" {
 
 void matmul(int* matA, int* matB, int* outC, int row, int col)
 {
-
-    /* Creat local buffers */
-    int32_t A[ROW][COL];
-    int32_t B[ROW][COL];
-    int32_t C[ROW][COL];
-
-    /* Load matrix from global memory into local buffer */
-readA:
-    for (int i = 0, r = 0, c = 0; i < row*col; i++, c++) {
-#pragma HLS LOOP_TRIPCOUNT min = row*col max = row*col
-        if (c == col) {
-            c = 0;
-            r++;
-        }
-        A[r][c] = (int32_t)matA[i];
-    }
-
-readB:
-    for (int i = 0, r = 0, c = 0; i < row*col; i++, c++) {
-#pragma HLS LOOP_TRIPCOUNT min = row*col max = row*col
-        if (c == col) {
-            c = 0;
-            r++;
-        }
-        B[r][c] = (int32_t)matB[i];
-    }
-
     /* Multiplication */
 calculateC:
     for (int r = 0; r < row; r++) {
@@ -91,21 +64,10 @@ calculateC:
     #pragma HLS LOOP_TRIPCOUNT min = col max = col
             for (int i = 0; i < row; i++) {
         #pragma HLS LOOP_TRIPCOUNT min = row max = row
-                res += A[r][i] * B[i][c];
+                res += A[r*row + i] * B[i*row + c];
             }  
-            C[r][c] = res;
+            outC[r*row + c] = res;
         }
-    }
-
-    /* Load matrix from local buffer into global memory */
-writeC:
-    for (int i = 0, r = 0, c = 0; i < row*col; i++, c++) {
-#pragma HLS LOOP_TRIPCOUNT min = row*col max = row*col
-        if (c == col) {
-            c = 0;
-            r++;
-        }
-        outC[i] = (int32_t)C[r][c];
     }
 
     /*end*/
