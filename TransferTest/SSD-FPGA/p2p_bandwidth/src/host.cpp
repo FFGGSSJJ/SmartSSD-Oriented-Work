@@ -30,7 +30,8 @@
 
 size_t max_buffer = 1024 * 1024 * 1024;
 size_t min_buffer = 4 * 1024;
-size_t max_size = 1024 * 1024 * 1024; // 2GB
+size_t max_size = 1024 * 1024 * 1024; // 1GB
+size_t min_size = 16 * MB;            // 32 MB
 
 int p2p_host_to_ssd(int& nvmeFd,
                     cl::Context context,
@@ -63,7 +64,7 @@ int p2p_host_to_ssd(int& nvmeFd,
     
     /* Start p2p transfer using various buffer sizes */
     std::cout << "Start P2P Write of various buffer sizes from SSD to device buffers\n" << std::endl;
-    for (datasize = 128 * MB; datasize <= max_size; datasize *= 2) {
+    for (datasize = min_size; datasize <= max_size; datasize *= 2) {
         std::cout << "\n------------------------------------------\n";
         std::cout << "   Data Size: " << datasize/1024/1024 << "MB";
         std::cout << "\n------------------------------------------\n";
@@ -131,7 +132,7 @@ void p2p_ssd_to_host(int& nvmeFd,
     size_t bufsize = 4 * KB;
 
     std::cout << "Start P2P write of various buffer sizes from device buffers to SSD\n" << std::endl;
-    for (datasize = 128 * MB; datasize <= max_size; datasize *= 2) {
+    for (datasize = min_size; datasize <= max_size; datasize *= 2) {
         std::cout << "\n------------------------------------------\n";
         std::cout << "   Data Size: " << datasize/1024/1024 << "MB";
         std::cout << "\n------------------------------------------\n";
