@@ -99,7 +99,7 @@ calculateC:
         #pragma HLS LOOP_TRIPCOUNT min = h max = h
                 res += A[r][i] * B[i][c];
             }  
-            outC[(tile_x*TILE_HEIGHT)*WIDTH + tile_y*TILE_WIDTH + r*TILE_WIDTH + c] += res;
+            outC[(tile_x*TILE_HEIGHT)*WIDTH + tile_y*TILE_WIDTH + r*TILE_WIDTH + c] = res;
         }
     }
 

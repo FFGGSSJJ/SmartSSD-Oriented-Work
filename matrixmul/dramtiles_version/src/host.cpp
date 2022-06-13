@@ -76,7 +76,7 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     /* Allocate global buffers in the global memory of device, make it p2p ext buffer */
     cl::Buffer matA(context, CL_MEM_READ_ONLY, (size_t)SIZE, nullptr, &err);
     cl::Buffer matB(context, CL_MEM_READ_ONLY, (size_t)SIZE, nullptr, &err);
-    cl::Buffer matC(context, CL_MEM_READ_WRITE, (size_t)SIZE, nullptr, &err);
+    cl::Buffer matC(context, CL_MEM_WRITE_ONLY, (size_t)SIZE, nullptr, &err);
 
     /* Map allocated p2p global buffers into host */
     int32_t* matAptr = (int32_t*)cmdq.enqueueMapBuffer(matA, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
@@ -334,16 +334,19 @@ int main(int argc, char** argv)
     }
 
     /* flush cache line */
-    flush_cachelines((void*)matCdev);
-    flush_cachelines((void*)matCcpu);
+    _mm_clflush((void*)matCdev);
+    _mm_clflush((void*)matCcpu);
 
     /* Proceed for matrix multiplication */
     cout << "\n---------------------------------------\n";
     cout << "Perform Matrix Multiplication in Kernel\n";
     cout << "---------------------------------------\n";
     if (EXIT_FAILURE == dram_devMatrixMul(context, cmdq, program, matCdev))
-        return EXIT_FAILURE;
-    cout << "TEST PASSED\n";
+        cout << "TEST FAILED\n";
+    else
+        cout << "TEST PASSED\n";
+    free(matCdev);
+    free(matCcpu);
 
     // cout << "\n---------------------------------------\n";
     // cout << "Perform Matrix Multiplication in Host\n";
