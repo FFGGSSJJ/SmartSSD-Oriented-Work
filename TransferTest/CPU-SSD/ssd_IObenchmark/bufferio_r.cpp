@@ -42,8 +42,11 @@ void reader(int kReadOnceByteSize) {
     offset += kReadOnceByteSize;
   }
   ed = NowMicros();
+  double sec = (ed - st)/1000;
+  double bw = kTotalReadBytes/sec/1024/1024/1024;
   std::cout << "Buffer = " << kReadOnceByteSize/1024 << " KB ";
-  printf("Time elapsed microsecond(us) %lld, %lld MB/s\n", ed - st, kTotalReadBytes / (ed - st));
+  std::cout << "Throughput = " << bw << " GB/s\n";
+  //printf("Time elapsed microsecond(us) %lld, %lld MB/s\n", ed - st, kTotalReadBytes / (ed - st));
 
   close(fd);
   std::cout << "\n------------------\n";
