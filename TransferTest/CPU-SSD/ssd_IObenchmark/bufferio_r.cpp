@@ -13,8 +13,8 @@
 #define unlikely(x)    __builtin_expect(!!(x), 0)
 
 static const uint64_t minReadOnceByteSize = 4 * 1024;   // 4KB
-static const uint64_t maxReadOnceByteSize = 16 * 1024; //1024MB
-static const uint64_t kTotalReadBytes = 1024;   // 1024MB
+static const uint64_t maxReadOnceByteSize = 1024 * 1024; //1024MB
+static const uint64_t kTotalReadBytes = 1024*1024;   // 1024MB
 
 uint64_t NowMicros() {
   struct timeval tv;
