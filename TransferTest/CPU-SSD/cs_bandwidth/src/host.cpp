@@ -59,6 +59,9 @@ int ssd_to_dram(int& nvmeFd) {
 
     /* Allocate space in CUP DRAM */
     int32_t* dram_ptr = (int32_t*)malloc(max_buffer);
+
+    std::string fname = "/smartssd/gf9/matrix_band/int4096x4096";
+    int fd = open(fname.c_str(), O_NOATIME | O_RDWR, 0644);
     
     /* Start transfer using various buffer sizes */
     std::cout << "Start  Write of various buffer sizes from SSD to CPU DRAM\n" << std::endl;
@@ -72,7 +75,7 @@ int ssd_to_dram(int& nvmeFd) {
 
             std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
             for (int i = 0; i < iter; i++) {
-                ret = pread(nvmeFd, (void*)dram_ptr, bufsize, 0);
+                ret = pread(fd, (void*)dram_ptr, bufsize, 0);
                 if (ret == -1) {
                     std::cout << "read() failed, err: " << ret << ", line: " << __LINE__ << std::endl;
                     return EXIT_FAILURE;
