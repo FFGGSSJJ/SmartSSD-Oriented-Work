@@ -61,7 +61,7 @@ int ssd_to_dram(int& nvmeFd) {
     int32_t* dram_ptr = (int32_t*)malloc(max_buffer);
 
     std::string fname = "/smartssd/gf9/matrix_band/int4096x4096";
-    int fd = open(fname.c_str(), O_DIRECT | O_RDWR, 0644);
+    int fd = open(fname.c_str(), O_NOATIME | O_RDWR, 0644);
     
     /* Start transfer using various buffer sizes */
     std::cout << "Start  Write of various buffer sizes from SSD to CPU DRAM\n" << std::endl;

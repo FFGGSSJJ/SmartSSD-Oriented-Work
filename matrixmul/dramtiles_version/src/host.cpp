@@ -29,8 +29,8 @@ using std::endl;
 /* Macros */
 #define SSD2FPGA    0
 #define FPGA2SSD    1
-#define ROW         4096
-#define COL         4096
+#define ROW         256
+#define COL         256
 #define TILE_WIDTH  256
 #define TILE_HEIGHT 256
 #define TILE_ROW    ROW/TILE_HEIGHT
