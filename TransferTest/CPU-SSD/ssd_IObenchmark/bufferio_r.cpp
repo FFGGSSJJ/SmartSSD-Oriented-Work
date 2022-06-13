@@ -13,8 +13,8 @@
 #define unlikely(x)    __builtin_expect(!!(x), 0)
 
 static const uint64_t minReadOnceByteSize = 4 * 1024;   // 4KB
-static const uint64_t maxReadOnceByteSize = 16 * 1024; //1024MB
-static const uint64_t kTotalReadBytes = 1024;   // 1024MB
+static const uint64_t maxReadOnceByteSize = 1024 * 1024 * 1024; //1024MB
+static const uint64_t kTotalReadBytes = 1024 * 1024 * 1024;   // 1024MB
 
 uint64_t NowMicros() {
   struct timeval tv;
@@ -24,7 +24,7 @@ uint64_t NowMicros() {
 
 void reader(int kReadOnceByteSize) {
   uint64_t st, ed;
-
+  std::cout << "\n------------------\n";
   std::cout << "Open SmartSSD file\n";
   //std::string fname = "data" + std::to_string(index);
   std::string fname = "/smartssd/gf9/matrix_band/int4096x4096";
@@ -46,6 +46,7 @@ void reader(int kReadOnceByteSize) {
   printf("Time elapsed microsecond(us) %lld, %lld MB/s\n", ed - st, kTotalReadBytes / (ed - st));
 
   close(fd);
+  std::cout << "\n------------------\n";
 }
 
 int main() {
