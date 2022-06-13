@@ -7,15 +7,14 @@
 #include <vector>
 #include <thread>
 #include <fcntl.h>
+#include <x86intrin.h>
 
 #define likely(x)      __builtin_expect(!!(x), 1)
 #define unlikely(x)    __builtin_expect(!!(x), 0)
 
-static const uint64_t kReadOnceByteSize = 4096;
-static const uint64_t kReaderCountPerThread = 1000 * 1000;
-static const uint64_t kConcurrency = 64;
-static const uint64_t kReadBytesPerThread = kReadOnceByteSize * kReaderCountPerThread;
-static const uint64_t kTotalReadBytes = kReadBytesPerThread * kConcurrency;
+static const uint64_t minReadOnceByteSize = 4 * 1024;   // 4KB
+static const uint64_t maxReadOnceByteSize = 16 * 1024; //1024MB
+static const uint64_t kTotalReadBytes = 1024;   // 1024MB
 
 uint64_t NowMicros() {
   struct timeval tv;
@@ -23,7 +22,9 @@ uint64_t NowMicros() {
   return static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;
 }
 
-void reader(int index) {
+void reader(int kReadOnceByteSize) {
+  uint64_t st, ed;
+
   std::cout << "Open SmartSSD file\n";
   //std::string fname = "data" + std::to_string(index);
   std::string fname = "/smartssd/gf9/matrix_band/int4096x4096";
@@ -35,27 +36,23 @@ void reader(int index) {
   uint64_t offset = 0;
 
   std::cout << "Start read from SSD\n";
-  for (int32_t i = 0; i < kReaderCountPerThread; i++) {
+  st = NowMicros();
+  for (int32_t i = 0; i < kTotalReadBytes/kReadOnceByteSize; i++) {
     pread64(fd, buffer, kReadOnceByteSize, offset);
     offset += kReadOnceByteSize;
   }
+  ed = NowMicros();
+  std::cout << "Buffer = " << kReadOnceByteSize/1024 << " KB ";
+  printf("Time elapsed microsecond(us) %lld, %lld MB/s\n", ed - st, kTotalReadBytes / (ed - st));
 
   close(fd);
 }
 
 int main() {
-  uint64_t st, ed;
-  st = NowMicros();
-  std::vector<std::thread> threads;
-  for(int i = 0; i < kConcurrency; i++) {
-    std::thread worker(reader, i);
-    threads.push_back(std::move(worker));
+  for(int i = minReadOnceByteSize; i <= maxReadOnceByteSize; i *= 2) {
+    // std::thread worker(reader, i);
+    // threads.push_back(std::move(worker));
+    reader(i);
   }
-  std::cout << "Read starts\n";
-  for (int i = 0; i < kConcurrency; i++) {
-    threads[i].join();
-  }
-  ed = NowMicros();
-  printf("time elapsed microsecond(us) %lld, %lld MB/s\n", ed - st, kTotalReadBytes / (ed - st));
   return 0;
 }
