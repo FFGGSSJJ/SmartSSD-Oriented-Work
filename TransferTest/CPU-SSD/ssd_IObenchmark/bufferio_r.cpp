@@ -32,7 +32,8 @@ void reader(int kReadOnceByteSize) {
   int fd = ::open(fname.c_str(), O_NOATIME | O_RDWR, 0644);
 
   void* buffer = NULL;
-  posix_memalign(&buffer, getpagesize(), kReadOnceByteSize);
+  //posix_memalign(&buffer, getpagesize(), kReadOnceByteSize);
+  buffer = malloc(kReadOnceByteSize);
   uint64_t offset = 0;
 
   std::cout << "Start read from SSD\n";
@@ -47,7 +48,7 @@ void reader(int kReadOnceByteSize) {
   std::cout << "Buffer = " << kReadOnceByteSize/1024 << " KB ";
   std::cout << "Throughput = " << bw << " GB/s\n";
   //printf("Time elapsed microsecond(us) %lld, %lld MB/s\n", ed - st, kTotalReadBytes / (ed - st));
-
+  free(buffer);
   close(fd);
   std::cout << "\n------------------\n";
 }
