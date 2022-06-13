@@ -39,7 +39,7 @@ void reader(int kReadOnceByteSize) {
   std::cout << "Start read from SSD\n";
   st = NowMicros();
   for (int32_t i = 0; i < kTotalReadBytes/kReadOnceByteSize; i++) {
-    pread64(fd, buffer, kReadOnceByteSize, offset);
+    pread(fd, buffer, kReadOnceByteSize, offset);
     offset += kReadOnceByteSize;
   }
   ed = NowMicros();
