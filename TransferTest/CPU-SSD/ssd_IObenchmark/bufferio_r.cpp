@@ -29,7 +29,7 @@ void reader(int kReadOnceByteSize) {
   //std::string fname = "data" + std::to_string(index);
   std::string fname = "/smartssd/gf9/matrix_band/int4096x4096";
 
-  int fd = open(fname.c_str(), O_NOATIME | O_RDWR, 0644);
+  int fd = open(fname.c_str(), O_DIRECT | O_RDWR, 0644);
 
   void* buffer = NULL;
   //posix_memalign(&buffer, getpagesize(), kReadOnceByteSize);
