@@ -151,7 +151,12 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
             cout << "Kernel " << i * TILE_ROW + j << " execution time: " << dnsduration << "ns\n";
         }
     }
-
+    for (int i = 0; i < ROW*COL; i++) {
+        if (matCptr[i] != ROW) {
+            cout << "result in dev pointer" << i << ": " << resPtr[i] << endl;
+            break;
+        }
+    }
     /* transfer to load the result into DRAM */
     cout << "\nTrying to transfer Matrix from FPGA into DRAM\n";
     std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
@@ -175,7 +180,8 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
 
     for (int i = 0; i < ROW*COL; i++) {
         if (resPtr[i] != ROW) {
-            cout << "result" << i << ": " << resPtr[i] << endl;
+            cout << "result in dram pointer" << i << ": " << resPtr[i] << endl;
+            break;
         }
     }
     /* Unmap pointers */
