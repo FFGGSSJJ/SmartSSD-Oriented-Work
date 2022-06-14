@@ -73,17 +73,6 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     int err;
     cl::Kernel kernel;
 
-    /* Allocate global buffers in the global memory of device, make it p2p ext buffer */
-    cl::Buffer matA(context, CL_MEM_READ_ONLY, (size_t)SIZE, nullptr, &err);
-    cl::Buffer matB(context, CL_MEM_READ_ONLY, (size_t)SIZE, nullptr, &err);
-    cl::Buffer matC(context, CL_MEM_WRITE_ONLY, (size_t)SIZE, nullptr, &err);
-
-    /* Map allocated p2p global buffers into host */
-    int32_t* matAptr = (int32_t*)cmdq.enqueueMapBuffer(matA, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
-    int32_t* matBptr = (int32_t*)cmdq.enqueueMapBuffer(matB, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
-    int32_t* matCptr = (int32_t*)cmdq.enqueueMapBuffer(matC, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
-    cmdq.finish();
-
     /* Allocate space in DRAM for matrix A and B */
     int32_t* matAdram = (int32_t*)malloc((size_t)SIZE);
     int32_t* matBdram = (int32_t*)malloc((size_t)SIZE);
@@ -92,13 +81,32 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     for (int i = 0; i < ROW*COL; i++) {
         matAdram[i] = 1;
         matBdram[i] = 1;
-        matCptr[i] = 0;
+        resPtr[i] = 0;
     }
+
+    flush_cachelines((void*)matAdram);
+    flush_cachelines((void*)matBdram);
+    flush_cachelines((void*)resPtr);
+
+    /* Allocate global buffers in the global memory of device, make it p2p ext buffer */
+    cl::Buffer matA(context, CL_MEM_READ_ONLY, (size_t)SIZE, (void*)matAdram, &err);
+    cl::Buffer matB(context, CL_MEM_READ_ONLY, (size_t)SIZE, (void*)matBdram, &err);
+    cl::Buffer matC(context, CL_MEM_WRITE_ONLY, (size_t)SIZE, (void*)resPtr, &err);
+
+    /* Map allocated p2p global buffers into host */
+    // int32_t* matAptr = (int32_t*)cmdq.enqueueMapBuffer(matA, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
+    // int32_t* matBptr = (int32_t*)cmdq.enqueueMapBuffer(matB, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
+    // int32_t* matCptr = (int32_t*)cmdq.enqueueMapBuffer(matC, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
+    // cmdq.finish();
 
     /* Initialize the kernels */
     std::string krn_name = "matmul";
     OCL_CHECK(err, kernel = cl::Kernel(program, krn_name.c_str(), &err));
-    
+
+    /* Set some args */
+    OCL_CHECK(err, err = kernel.setArg(0, matA));
+    OCL_CHECK(err, err = kernel.setArg(1, matB));
+    OCL_CHECK(err, err = kernel.setArg(2, matC));
 
     /* transfer to load Matrix into FPGA */
     cout << "Trying to transfer Matrix from DRAM into FPGA\n";
@@ -107,14 +115,9 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     string size_str = xcl::convert_size(bufsize);
 
     std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
-    /* Transfer matrix A */
-    for (int i = 0; i < iter; i++) {
-        memcpy((void*)matAptr, (void*)matAdram, bufsize);
-    }
-    /* Transfer matrix B */
-    for (int i = 0; i < iter; i++) {
-        memcpy((void*)matBptr, (void*)matBdram, bufsize);
-    }
+    /* Transfer matrix A and B*/
+    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({matA, matB}, 0 /* 0 means from host*/));
+    cmdq.finish();
     std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
 
     /* Calculate the transfer time and bandwidth */
@@ -124,11 +127,6 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     double gbpersec = (2 * iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
     std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
             << std::fixed << gbpersec << "GB/s\n";
-
-    /* Set some args */
-    OCL_CHECK(err, err = kernel.setArg(0, matA));
-    OCL_CHECK(err, err = kernel.setArg(1, matB));
-    OCL_CHECK(err, err = kernel.setArg(2, matC));
 
     /* Set the kernel arguments and launch the kernel in sequential manner */
     for (int i = 0; i < TILE_ROW; i++) {
@@ -151,19 +149,13 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
             cout << "Kernel " << i * TILE_ROW + j << " execution time: " << dnsduration << "ns\n";
         }
     }
-    for (int i = 0; i < ROW*COL; i++) {
-        if (matCptr[i] != ROW) {
-            cout << "result in dev pointer" << i << ": " << resPtr[i] << endl;
-            break;
-        }
-    }
+    
     /* transfer to load the result into DRAM */
     cout << "\nTrying to transfer Matrix from FPGA into DRAM\n";
     std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
     /* Transfer matrix C */
-    for (int i = 0; i < iter; i++) {
-        memcpy((void*)resPtr, (void*)matCptr, bufsize);
-    }
+    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({matC}, CL_MIGRATE_MEM_OBJECT_HOST));
+    cmdq.finish();
     std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
 
     /* Calculate the transfer time and bandwidth */
