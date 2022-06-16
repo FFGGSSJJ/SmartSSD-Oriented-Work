@@ -62,6 +62,7 @@ int ssd_to_dram(int& nvmeFd) {
 
     std::string fname = "/smartssd/gf9/matrix_band/int4096x4096";
     int fd = open(fname.c_str(), O_NOATIME | O_RDWR, 0644);
+    // O_DIRECT
     
     /* Start transfer using various buffer sizes */
     std::cout << "Start  Write of various buffer sizes from SSD to CPU DRAM\n" << std::endl;
@@ -146,7 +147,7 @@ int main(int argc, char** argv) {
 
     // P2P transfer from host to SSD
     std::cout << "############################################################\n";
-    std::cout << "             Reading data from SSD to CPU DRAM                       \n";
+    std::cout << "             Reading data from SSD to CPU DRAM              \n";
     std::cout << "############################################################\n";
     // Get access to the NVMe SSD.
     nvmeFd = open(filename.c_str(), O_RDWR | O_DIRECT);
@@ -163,7 +164,7 @@ int main(int argc, char** argv) {
 
     // transfer from SSD to host
     std::cout << "############################################################\n";
-    std::cout << "           Writing data from CPU DRAM to SSD                       \n";
+    std::cout << "           Writing data from CPU DRAM to SSD                \n";
     std::cout << "############################################################\n";
 
     nvmeFd = open(filename.c_str(), O_RDWR | O_DIRECT);

@@ -74,6 +74,7 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     cl::Kernel kernel;
 
     /* Allocate space in DRAM for matrix A and B */
+    std::cout << "Allocate space in CPU DRAM\n";
     int32_t* matAdram = (int32_t*)malloc((size_t)SIZE);
     int32_t* matBdram = (int32_t*)malloc((size_t)SIZE);
 
@@ -81,17 +82,17 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     for (int i = 0; i < ROW*COL; i++) {
         matAdram[i] = 1;
         matBdram[i] = 1;
-        resPtr[i] = 0;
     }
 
     flush_cachelines((void*)matAdram);
     flush_cachelines((void*)matBdram);
-    flush_cachelines((void*)resPtr);
+
 
     /* Allocate global buffers in the global memory of device, make it p2p ext buffer */
-    cl::Buffer matA(context, CL_MEM_READ_ONLY, (size_t)SIZE, (void*)matAdram, &err);
-    cl::Buffer matB(context, CL_MEM_READ_ONLY, (size_t)SIZE, (void*)matBdram, &err);
-    cl::Buffer matC(context, CL_MEM_WRITE_ONLY, (size_t)SIZE, (void*)resPtr, &err);
+    std::cout << "Allocate global buffer in FPGA\n";
+    cl::Buffer matA(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, (size_t)SIZE, (void*)matAdram, &err);
+    cl::Buffer matB(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, (size_t)SIZE, (void*)matBdram, &err);
+    cl::Buffer matC(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, (size_t)SIZE, (void*)resPtr, &err);
 
     /* Map allocated p2p global buffers into host */
     // int32_t* matAptr = (int32_t*)cmdq.enqueueMapBuffer(matA, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
