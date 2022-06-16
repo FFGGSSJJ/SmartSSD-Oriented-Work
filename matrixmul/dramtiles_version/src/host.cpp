@@ -52,7 +52,7 @@ void flush_cachelines(void* ptr)
 {
     const int LINESIZE = 64;
     const char* p = (const char*)ptr;
-    uintptr_t endline = ((uintptr_t)ptr + max_size - 1) | (LINESIZE-1);
+    uintptr_t endline = ((uintptr_t)ptr + SIZE - 1) | (LINESIZE-1);
 
     do {   // flush while p is in a cache line that contains any of the struct
          _mm_clflush(p);
@@ -75,8 +75,8 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
 
     /* Allocate space in DRAM for matrix A and B */
     std::cout << "Allocate space in CPU DRAM\n";
-    int32_t* matAdram = (int32_t*)malloc((size_t)SIZE);
-    int32_t* matBdram = (int32_t*)malloc((size_t)SIZE);
+    int32_t* matAdram = (int32_t*)malloc(ROW*COL*sizeof(int32_t));
+    int32_t* matBdram = (int32_t*)malloc(ROW*COL*sizeof(int32_t));
 
     /* Initialize matrix */
     for (int i = 0; i < ROW*COL; i++) {
@@ -111,7 +111,7 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
 
     /* transfer to load Matrix into FPGA */
     cout << "Trying to transfer Matrix from DRAM into FPGA\n";
-    size_t bufsize = mid_buffer;
+    size_t bufsize = min_buffer;
     int iter = (size_t)SIZE/bufsize;
     string size_str = xcl::convert_size(bufsize);
 
