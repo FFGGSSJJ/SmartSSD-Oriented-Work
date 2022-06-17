@@ -14,8 +14,8 @@
 #include <hls_stream.h>
 
 /* define */
-#define WIDTH       256
-#define HEIGHT      256
+#define WIDTH       4096
+#define HEIGHT      4096
 #define TILE_WIDTH  256
 #define TILE_HEIGHT 256
 #define TILE_ROW    WIDTH/TILE_WIDTH
@@ -103,7 +103,7 @@ calculateC:
         #pragma HLS LOOP_TRIPCOUNT min = h max = h
                 res += A[r][i] * B[i][c];
             }  
-            outC[(tile_x*TILE_HEIGHT)*WIDTH + tile_y*TILE_WIDTH + r*TILE_WIDTH + c] = res;
+            outC[(tile_x*TILE_HEIGHT)*WIDTH + tile_y*TILE_WIDTH + r*TILE_WIDTH + c] += res;
             if (flag == 1) outC[(tile_x*TILE_HEIGHT)*WIDTH + tile_y*TILE_WIDTH + r*TILE_WIDTH + c] = 99;
         }
     }

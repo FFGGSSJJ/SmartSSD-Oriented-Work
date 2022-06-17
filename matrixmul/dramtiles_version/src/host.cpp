@@ -29,8 +29,8 @@ using std::endl;
 /* Macros */
 #define SSD2FPGA    0
 #define FPGA2SSD    1
-#define ROW         256
-#define COL         256
+#define ROW         4096
+#define COL         4096
 #define TILE_WIDTH  256
 #define TILE_HEIGHT 256
 #define TILE_ROW    ROW/TILE_HEIGHT
@@ -68,7 +68,7 @@ void flush_cachelines(void* ptr)
  * @param program 
  * @return int 
  */
-int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int32_t* resPtr)
+int unaligned_dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int32_t* resPtr)
 {
     int err;
     cl::Kernel kernel;
@@ -94,12 +94,6 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     cl::Buffer matB(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, (size_t)SIZE, (void*)matBdram, &err);
     cl::Buffer matC(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, (size_t)SIZE, (void*)resPtr, &err);
 
-    /* Map allocated p2p global buffers into host */
-    // int32_t* matAptr = (int32_t*)cmdq.enqueueMapBuffer(matA, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
-    // int32_t* matBptr = (int32_t*)cmdq.enqueueMapBuffer(matB, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
-    // int32_t* matCptr = (int32_t*)cmdq.enqueueMapBuffer(matC, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, (size_t)SIZE, nullptr, nullptr, &err);
-    // cmdq.finish();
-
     /* Initialize the kernels */
     std::string krn_name = "matmul";
     OCL_CHECK(err, kernel = cl::Kernel(program, krn_name.c_str(), &err));
@@ -111,9 +105,7 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
 
     /* transfer to load Matrix into FPGA */
     cout << "Trying to transfer Matrix from DRAM into FPGA\n";
-    size_t bufsize = min_buffer;
-    int iter = (size_t)SIZE/bufsize;
-    string size_str = xcl::convert_size(bufsize);
+    string size_str = xcl::convert_size(SIZE);
 
     std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
     /* Transfer matrix A and B*/
@@ -125,18 +117,18 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     cl_ulong Time = std::chrono::duration_cast<std::chrono::microseconds>(End1 - Start1).count();
     double dnsduration = (double)Time;
     double dsduration = dnsduration / ((double)1000000);
-    double gbpersec = (2 * iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
-    std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
+    double gbpersec = (2 * SIZE / dsduration) / ((double)1024 * 1024 * 1024);
+    std::cout << "Buffer = " << size_str << " Iterations = " << 2 << " Throughput = " << std::setprecision(2)
             << std::fixed << gbpersec << "GB/s\n";
 
     /* Set the kernel arguments and launch the kernel in sequential manner */
+    /* Launch the kernels */
+    cout << "\nLaunch the Matrix Multiplication kernels" << endl;
+    double total_time = 0;
     for (int i = 0; i < TILE_ROW; i++) {
         for (int j = 0; j < TILE_COL; j++) {
             OCL_CHECK(err, err = kernel.setArg(3, i));
             OCL_CHECK(err, err = kernel.setArg(4, j));
-
-            /* Launch the kernel */
-            cout << "\nLaunch the Matrix Multiplication kernel " << i * TILE_ROW + j << endl;
 
             std::chrono::high_resolution_clock::time_point matmul_start = std::chrono::high_resolution_clock::now();
             OCL_CHECK(err, err = cmdq.enqueueTask(kernel));
@@ -148,8 +140,10 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
             dnsduration = (double)matTime;
             dsduration = dnsduration / ((double)1000000);
             cout << "Kernel " << i * TILE_ROW + j << " execution time: " << dnsduration << "ns\n";
+            total_time += dnsduration;
         }
     }
+    cout << "Total Execution Time: " << total_time << "ns\n";
     
     /* transfer to load the result into DRAM */
     cout << "\nTrying to transfer Matrix from FPGA into DRAM\n";
@@ -163,22 +157,21 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
     cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
     dnsduration = (double)Time2;
     dsduration = dnsduration / ((double)1000000);
-    gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
-    std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
+    gbpersec = (SIZE / dsduration) / ((double)1024 * 1024 * 1024);
+    std::cout << "Buffer = " << size_str << " Iterations = " << 1 << " Throughput = " << std::setprecision(2)
             << std::fixed << gbpersec << "GB/s\n";
 
     /* free allocated space */
     free(matAdram);
     free(matBdram);
 
+    /* check the result */
     for (int i = 0; i < ROW*COL; i++) {
         if (resPtr[i] != ROW) {
             cout << "result in dram pointer" << i << ": " << resPtr[i] << endl;
-            break;
+            return EXIT_FAILURE;
         }
     }
-    /* Unmap pointers */
-    //cmdq.enqueueUnmapMemObject
     return EXIT_SUCCESS;
 }
 
@@ -190,7 +183,7 @@ int dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program pr
  * @param resPtr
  * @return int 
  */
-int dram_cpuMatrixMul(int32_t* resPtr)
+int aligned_dram_cpuMatrixMul(int32_t* resPtr)
 {
     if (resPtr == NULL) return EXIT_FAILURE;
 
@@ -323,27 +316,29 @@ int main(int argc, char** argv)
 
 
     /* Allocate matrix in DRAM */
-    int32_t* matCdev = (int32_t*)malloc((size_t)SIZE);
-    int32_t* matCcpu = (int32_t*)malloc((size_t)SIZE);
+    int32_t* unaligned_matC = (int32_t*)malloc((size_t)SIZE);
+    int32_t* aligned_matC = (int32_t*)malloc((size_t)SIZE);
 
     /* Initialize matrix */
     for (int i = 0; i < ROW*COL; i++) {
-        matCdev[i] = 0;
-        matCcpu[i] = 0;
+        unaligned_matC[i] = 0;
+        aligned_matC[i] = 0;
     }
 
     /* flush cache line */
-    _mm_clflush((void*)matCdev);
-    _mm_clflush((void*)matCcpu);
+    flush_cachelines((void*)unaligned_matC);
+    flush_cachelines((void*)aligned_matC);
 
     /* Proceed for matrix multiplication */
     cout << "\n---------------------------------------\n";
     cout << "Perform Matrix Multiplication in Kernel\n";
     cout << "---------------------------------------\n";
-    if (EXIT_FAILURE == dram_devMatrixMul(context, cmdq, program, matCdev))
+    if (EXIT_FAILURE == unaligned_dram_devMatrixMul(context, cmdq, program, unaligned_matC))
         cout << "TEST FAILED\n";
     else
         cout << "TEST PASSED\n";
+
+    /* Free allocated space */
     free(matCdev);
     free(matCcpu);
 
