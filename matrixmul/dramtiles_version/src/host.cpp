@@ -339,8 +339,8 @@ int main(int argc, char** argv)
         cout << "TEST PASSED\n";
 
     /* Free allocated space */
-    free(matCdev);
-    free(matCcpu);
+    free(unaligned_matC);
+    free(aligned_matC);
 
     // cout << "\n---------------------------------------\n";
     // cout << "Perform Matrix Multiplication in Host\n";
