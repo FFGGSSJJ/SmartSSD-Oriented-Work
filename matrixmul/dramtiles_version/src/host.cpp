@@ -71,7 +71,7 @@ void flush_cachelines(void* ptr)
 int unaligned_dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int32_t* resPtr)
 {
     int err;
-    cl::Kernel kernel;
+    cl::Kernel kernel[TILE_NUM];
 
     /* Allocate space in DRAM for matrix A and B */
     std::cout << "Allocate space in CPU DRAM\n";
@@ -96,12 +96,15 @@ int unaligned_dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::
 
     /* Initialize the kernels */
     std::string krn_name = "matmul";
-    OCL_CHECK(err, kernel = cl::Kernel(program, krn_name.c_str(), &err));
+    for (int i = 0; i < TILE_NUM; i++)
+        OCL_CHECK(err, kernel[i] = cl::Kernel(program, krn_name.c_str(), &err));
 
     /* Set some args */
-    OCL_CHECK(err, err = kernel.setArg(0, matA));
-    OCL_CHECK(err, err = kernel.setArg(1, matB));
-    OCL_CHECK(err, err = kernel.setArg(2, matC));
+    for (int i = 0; i < TILE_NUM; i++) {
+        OCL_CHECK(err, err = kernel[i].setArg(0, matA));
+        OCL_CHECK(err, err = kernel[i].setArg(1, matB));
+        OCL_CHECK(err, err = kernel[i].setArg(2, matC));
+    }
 
     /* transfer to load Matrix into FPGA */
     cout << "Trying to transfer Matrix from DRAM into FPGA\n";
@@ -112,6 +115,7 @@ int unaligned_dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::
     OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({matA, matB}, 0 /* 0 means from host*/));
     cmdq.finish();
     std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
+
 
     /* Calculate the transfer time and bandwidth */
     cl_ulong Time = std::chrono::duration_cast<std::chrono::microseconds>(End1 - Start1).count();
@@ -127,11 +131,11 @@ int unaligned_dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::
     double total_time = 0;
     for (int i = 0; i < TILE_ROW; i++) {
         for (int j = 0; j < TILE_COL; j++) {
-            OCL_CHECK(err, err = kernel.setArg(3, i));
-            OCL_CHECK(err, err = kernel.setArg(4, j));
+            OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(3, i));
+            OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(4, j));
 
             std::chrono::high_resolution_clock::time_point matmul_start = std::chrono::high_resolution_clock::now();
-            OCL_CHECK(err, err = cmdq.enqueueTask(kernel));
+            OCL_CHECK(err, err = cmdq.enqueueTask(kernel[i*TILE_ROW + j]));
             std::chrono::high_resolution_clock::time_point matmul_end = std::chrono::high_resolution_clock::now();
             cmdq.finish();
 

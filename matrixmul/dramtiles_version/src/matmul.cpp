@@ -66,7 +66,6 @@ void matmul(int* matA, int* matB, int* outC, int tile_x, int tile_y)
     int32_t B[TILE_HEIGHT][TILE_WIDTH];
     const int h = 256;
     const int w = 256;
-    int flag = 0;
 
     /* Load matrix from global memory into local buffer */
 readA:
@@ -89,9 +88,6 @@ readB:
         B[r][c] = (int32_t)matB[(tile_x*TILE_HEIGHT)*WIDTH + tile_y*TILE_WIDTH + i];
     }
 
-    /* Verify */
-    if (A[0][0] != 1)   flag = 1;
-
     /* Multiplication */
 calculateC:
     for (int r = 0; r < TILE_HEIGHT; r++) {
@@ -104,7 +100,6 @@ calculateC:
                 res += A[r][i] * B[i][c];
             }  
             outC[(tile_x*TILE_HEIGHT)*WIDTH + tile_y*TILE_WIDTH + r*TILE_WIDTH + c] += res;
-            if (flag == 1) outC[(tile_x*TILE_HEIGHT)*WIDTH + tile_y*TILE_WIDTH + r*TILE_WIDTH + c] = 99;
         }
     }
 
