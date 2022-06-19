@@ -29,8 +29,8 @@ using std::endl;
 /* Macros */
 #define SSD2FPGA    0
 #define FPGA2SSD    1
-#define ROW         4096
-#define COL         4096
+#define ROW         1024
+#define COL         1024
 #define TILE_WIDTH  256
 #define TILE_HEIGHT 256
 #define TILE_ROW    ROW/TILE_HEIGHT
@@ -61,7 +61,7 @@ void flush_cachelines(void* ptr)
 }
 
 /**
- * @brief p2p_MatrixMul
+ * @brief MatrixMul
  * 
  * @param context 
  * @param cmdq 
@@ -71,7 +71,7 @@ void flush_cachelines(void* ptr)
 int unaligned_dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int32_t* resPtr)
 {
     int err;
-    cl::Kernel kernel[TILE_NUM];
+    cl::Kernel kernel;
 
     /* Allocate space in DRAM for matrix A and B */
     std::cout << "Allocate space in CPU DRAM\n";
@@ -96,15 +96,12 @@ int unaligned_dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::
 
     /* Initialize the kernels */
     std::string krn_name = "matmul";
-    for (int i = 0; i < TILE_NUM; i++)
-        OCL_CHECK(err, kernel[i] = cl::Kernel(program, krn_name.c_str(), &err));
+    OCL_CHECK(err, kernel = cl::Kernel(program, krn_name.c_str(), &err));
 
     /* Set some args */
-    for (int i = 0; i < TILE_NUM; i++) {
-        OCL_CHECK(err, err = kernel[i].setArg(0, matA));
-        OCL_CHECK(err, err = kernel[i].setArg(1, matB));
-        OCL_CHECK(err, err = kernel[i].setArg(2, matC));
-    }
+    OCL_CHECK(err, err = kernel.setArg(0, matA));
+    OCL_CHECK(err, err = kernel.setArg(1, matB));
+    OCL_CHECK(err, err = kernel.setArg(2, matC));
 
     /* transfer to load Matrix into FPGA */
     cout << "Trying to transfer Matrix from DRAM into FPGA\n";
@@ -125,29 +122,19 @@ int unaligned_dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::
     std::cout << "Buffer = " << size_str << " Iterations = " << 2 << " Throughput = " << std::setprecision(2)
             << std::fixed << gbpersec << "GB/s\n";
 
-    /* Set the kernel arguments and launch the kernel in sequential manner */
+
     /* Launch the kernels */
     cout << "\nLaunch the Matrix Multiplication kernels" << endl;
-    double total_time = 0;
-    for (int i = 0; i < TILE_ROW; i++) {
-        for (int j = 0; j < TILE_COL; j++) {
-            OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(3, i));
-            OCL_CHECK(err, err = kernel[i*TILE_ROW + j].setArg(4, j));
+    std::chrono::high_resolution_clock::time_point matmul_start = std::chrono::high_resolution_clock::now();
+    OCL_CHECK(err, err = cmdq.enqueueTask(kernel));
+    cmdq.finish();
+    std::chrono::high_resolution_clock::time_point matmul_end = std::chrono::high_resolution_clock::now();
 
-            std::chrono::high_resolution_clock::time_point matmul_start = std::chrono::high_resolution_clock::now();
-            OCL_CHECK(err, err = cmdq.enqueueTask(kernel[i*TILE_ROW + j]));
-            std::chrono::high_resolution_clock::time_point matmul_end = std::chrono::high_resolution_clock::now();
-            cmdq.finish();
-
-            /* Calculate kernel launch time */
-            cl_ulong matTime = std::chrono::duration_cast<std::chrono::microseconds>(matmul_end - matmul_start).count();
-            dnsduration = (double)matTime;
-            dsduration = dnsduration / ((double)1000000);
-            cout << "Kernel " << i * TILE_ROW + j << " execution time: " << dnsduration << "ns\n";
-            total_time += dnsduration;
-        }
-    }
-    cout << "Total Execution Time: " << total_time << "ns\n";
+    /* Calculate kernel launch time */
+    cl_ulong matTime = std::chrono::duration_cast<std::chrono::microseconds>(matmul_end - matmul_start).count();
+    dnsduration = (double)matTime;
+    dsduration = dnsduration / ((double)1000000);
+    cout << "Kernel execution time: " << dnsduration << "ns\n";
     
     /* transfer to load the result into DRAM */
     cout << "\nTrying to transfer Matrix from FPGA into DRAM\n";
