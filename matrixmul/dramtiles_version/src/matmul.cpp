@@ -39,7 +39,7 @@ mem_rd:
         for (int j = 0; j < TILE_WIDTH; j++) {
     #pragma HLS LOOP_TRIPCOUNT min = w max = w
     #pragma HLS PIPELINE II = 1
-            out[i * TILE_HEIGHT + j] = in[(tile_x*TILE_HEIGHT)*WIDTH + tile_y*TILE_WIDTH + i * h + j]
+            out[i * TILE_HEIGHT + j] = in[(tile_x*TILE_HEIGHT)*WIDTH + tile_y*TILE_WIDTH + i * h + j];
         }
     }
 }
@@ -86,7 +86,7 @@ void matmul(int* matA, int* matB, int* outC)
 {
 #pragma HLS INTERFACE m_axi port = matA bundle = gmem0
 #pragma HLS INTERFACE m_axi port = matB bundle = gmem1
-#pragma HLS INTERFACE m_axi port = matC bundle = gmem2
+#pragma HLS INTERFACE m_axi port = outC bundle = gmem2
 
     /* Creat local buffers */
     int32_t A[TILE_WIDTH*TILE_HEIGHT];
