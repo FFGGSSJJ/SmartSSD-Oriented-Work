@@ -18,9 +18,9 @@
 #define HEIGHT      1024
 #define TILE_WIDTH  256
 #define TILE_HEIGHT 256
-#define TILE_ROW    WIDTH/TILE_WIDTH
-#define TILE_COL    HEIGHT/TILE_HEIGHT
-#define TILE_NUM    TILE_ROW * TILE_COL
+#define TILE_Y      WIDTH/TILE_WIDTH
+#define TILE_X      HEIGHT/TILE_HEIGHT
+#define TILE_NUM    TILE_X * TILE_Y
 #define PIPLINED    1
 #define BytesPerNum 4
 #define BytesPerKB  1024
@@ -94,13 +94,17 @@ void matmul(int* matA, int* matB, int* outC)
     int32_t C[TILE_WIDTH*TILE_HEIGHT];
 
     /* */
-    for (int i = 0; i < TILE_COL; i++) {
-        for (int j = 0; j < TILE_ROW; j++) {
-        #pragma HLS DATAFLOW /* enable task-level pipelined */
-           load_tile(matA, A, i, j);
-           load_tile(matB, B, i, j);
-           compute_tile(A, B, C);
-           store_result(C, outC, i, j);
+    for (int i = 0; i < TILE_X; i++) {
+        for (int j = 0; j < TILE_Y; j++) {
+            for (int m = 0; m < TILE_X; m++) {
+                for (int n = 0; n < TILE_Y; n++) {
+                #pragma HLS DATAFLOW /* enable task-level pipelined */
+                    load_tile(matA, A, m, n);
+                    load_tile(matB, B, m, n);
+                    compute_tile(A, B, C);
+                    store_result(C, outC, i, j);
+                }
+            }
         }
     }
 

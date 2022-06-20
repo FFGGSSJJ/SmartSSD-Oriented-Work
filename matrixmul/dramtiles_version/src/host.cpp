@@ -134,7 +134,7 @@ int unaligned_dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::
     cl_ulong matTime = std::chrono::duration_cast<std::chrono::microseconds>(matmul_end - matmul_start).count();
     dnsduration = (double)matTime;
     dsduration = dnsduration / ((double)1000000);
-    cout << "Kernel execution time: " << dnsduration << "ns\n";
+    cout << "Kernel execution time: " << dnsduration << "ns = " << dsduration << "s\n";
     
     /* transfer to load the result into DRAM */
     cout << "\nTrying to transfer Matrix from FPGA into DRAM\n";
