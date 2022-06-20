@@ -30,8 +30,8 @@ using std::endl;
 #define SSD2FPGA    0
 #define FPGA2SSD    1
 #define ALIGNMENT   64
-#define ROW         1024
-#define COL         1024
+#define ROW         4096
+#define COL         4096
 #define TILE_WIDTH  256
 #define TILE_HEIGHT 256
 #define TILE_ROW    ROW/TILE_HEIGHT
@@ -380,7 +380,7 @@ int main(int argc, char** argv)
     // }
     /* Allocate matrix in DRAM */
     int32_t* unaligned_matC = (int32_t*)malloc((size_t)SIZE);
-    int32_t* aligned_matC = (int32_t*)aligned_alloc(ALIGNMENT, ROW*COL*sizeof(int32_t));
+    int32_t* aligned_matC = (int32_t*)aligned_alloc(4 * 1024, ROW*COL*sizeof(int32_t));
 
     /* Initialize matrix */
     for (int i = 0; i < ROW*COL; i++) {

@@ -14,8 +14,8 @@
 #include <hls_stream.h>
 
 /* define */
-#define WIDTH       1024
-#define HEIGHT      1024
+#define WIDTH       4096
+#define HEIGHT      4096
 #define TILE_WIDTH  256
 #define TILE_HEIGHT 256
 #define TILE_Y      WIDTH/TILE_WIDTH
@@ -39,7 +39,7 @@ mem_rd:
         for (int j = 0; j < TILE_WIDTH; j++) {
     #pragma HLS LOOP_TRIPCOUNT min = w max = w
     #pragma HLS PIPELINE II = 1
-            out[i * TILE_HEIGHT + j] = in[(tile_x*TILE_HEIGHT)*WIDTH + tile_y*TILE_WIDTH + i * h + j];
+            out[i * TILE_HEIGHT + j] = in[(tile_x*TILE_HEIGHT + i)*WIDTH + tile_y*TILE_WIDTH + j];
         }
     }
 }
@@ -74,7 +74,7 @@ mem_wr:
         for (int j = 0; j < TILE_WIDTH; j++) {
     #pragma HLS LOOP_TRIPCOUNT min = w max = w
     #pragma HLS PIPELINE II = 1
-            out[(tile_x*TILE_HEIGHT)*WIDTH + tile_y*TILE_WIDTH + i * h + j] += in[i * TILE_HEIGHT + j];
+            out[(tile_x*TILE_HEIGHT + i)*WIDTH + tile_y*TILE_WIDTH + j] += in[i * TILE_HEIGHT + j];
         }
     }
 }
