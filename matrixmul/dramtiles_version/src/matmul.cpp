@@ -97,13 +97,11 @@ void matmul(int* matA, int* matB, int* outC)
     for (int i = 0; i < TILE_X; i++) {
         for (int j = 0; j < TILE_Y; j++) {
             for (int m = 0; m < TILE_X; m++) {
-                for (int n = 0; n < TILE_Y; n++) {
                 #pragma HLS DATAFLOW /* enable task-level pipelined */
-                    load_tile(matA, A, m, n);
-                    load_tile(matB, B, m, n);
-                    compute_tile(A, B, C);
-                    store_result(C, outC, i, j);
-                }
+                load_tile(matA, A, i, m);
+                load_tile(matB, B, m, j);
+                compute_tile(A, B, C);
+                store_result(C, outC, i, j);
             }
         }
     }
