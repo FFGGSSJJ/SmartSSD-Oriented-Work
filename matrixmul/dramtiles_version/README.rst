@@ -39,8 +39,9 @@ Once the environment has been configured, the application can be executed by
 DETAILS
 -------
 
+Some optimizations like pipeline and burst r/w are applied to optimize the performance.
 Following is the real log 
-reported while running the design on U2 platform:
+reported while running the design on U280 platform:
 
 ::
 

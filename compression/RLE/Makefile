@@ -46,7 +46,7 @@ help::
 # Points to top directory of Git repository
 
 MK_PATH := ./
-COMMON_REPO ?= $(shell bash -c 'export MK_PATH=$(MK_PATH); echo $${MK_PATH%host/matmul/*}')
+COMMON_REPO ?= $(shell bash -c 'export MK_PATH=$(MK_PATH); echo $${MK_PATH%host/rle/*}')
 PWD = $(shell readlink -f .)
 XF_PROJ_ROOT = $(shell readlink -f $(COMMON_REPO))
 
@@ -72,7 +72,7 @@ RESULT_STRING = TEST PASSED
 
 VPP := v++
 VPP_PFLAGS :=
-CMD_ARGS = -x $(BUILD_DIR)/matmul.xclbin -f ./data/sample.txt
+CMD_ARGS = -x $(BUILD_DIR)/rle.xclbin -f ./data/sample.txt
 
 include $(XF_PROJ_ROOT)/common/includes/opencl/opencl.mk
 include config.mk
@@ -102,12 +102,12 @@ endif
 
 
 
-EXECUTABLE = ./matmul
+EXECUTABLE = ./rle
 EMCONFIG_DIR = $(TEMP_DIR)
 
 ############################## Declaring Binary Containers ##############################
-BINARY_CONTAINERS += $(BUILD_DIR)/matmul.xclbin
-BINARY_CONTAINER_matmul_OBJS += $(TEMP_DIR)/matmul.xo
+BINARY_CONTAINERS += $(BUILD_DIR)/rle.xclbin
+BINARY_CONTAINER_rle_OBJS += $(TEMP_DIR)/rle.xo
 
 ############################## Setting Targets ##############################
 CP = cp -rf
@@ -125,13 +125,13 @@ build: check-vitis check-device $(BINARY_CONTAINERS)
 xclbin: build
 
 ############################## Setting Rules for Binary Containers (Building Kernels) ##############################
-$(TEMP_DIR)/matmul.xo: src/matmul.cpp
+$(TEMP_DIR)/rle.xo: src/rle.cpp
 	mkdir -p $(TEMP_DIR)
-	$(VPP) $(VPP_FLAGS) -c -k matmul --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
-$(BUILD_DIR)/matmul.xclbin: $(BINARY_CONTAINER_matmul_OBJS)
+	$(VPP) $(VPP_FLAGS) -c -k rle --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
+$(BUILD_DIR)/rle.xclbin: $(BINARY_CONTAINER_rle_OBJS)
 	mkdir -p $(BUILD_DIR)
-	$(VPP) $(VPP_FLAGS) -l $(VPP_LDFLAGS) --temp_dir $(TEMP_DIR) -o'$(BUILD_DIR)/matmul.link.xclbin' $(+)
-	$(VPP) -p $(BUILD_DIR)/matmul.link.xclbin -t $(TARGET) --platform $(PLATFORM) --package.out_dir $(PACKAGE_OUT) -o $(BUILD_DIR)/matmul.xclbin
+	$(VPP) $(VPP_FLAGS) -l $(VPP_LDFLAGS) --temp_dir $(TEMP_DIR) -o'$(BUILD_DIR)/rle.link.xclbin' $(+)
+	$(VPP) -p $(BUILD_DIR)/rle.link.xclbin -t $(TARGET) --platform $(PLATFORM) --package.out_dir $(PACKAGE_OUT) -o $(BUILD_DIR)/rle.xclbin
 
 ############################## Setting Rules for Host (Building Host Executable) ##############################
 $(EXECUTABLE): $(HOST_SRCS) | check-xrt

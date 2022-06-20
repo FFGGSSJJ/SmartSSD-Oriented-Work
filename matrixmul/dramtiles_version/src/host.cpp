@@ -182,8 +182,8 @@ int aligned_dram_cpuMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Pr
 
     /* Allocate space in DRAM for matrix A and B */
     std::cout << "Allocate aligned space in CPU DRAM\n";
-    int32_t* matAdram = (int32_t*)aligned_alloc(ALIGNMENT, ROW*COL*sizeof(int32_t));
-    int32_t* matBdram = (int32_t*)aligned_alloc(ALIGNMENT, ROW*COL*sizeof(int32_t));
+    int32_t* matAdram = (int32_t*)aligned_alloc(4 * 1024, ROW*COL*sizeof(int32_t));
+    int32_t* matBdram = (int32_t*)aligned_alloc(4 * 1024, ROW*COL*sizeof(int32_t));
 
     /* Initialize matrix */
     for (int i = 0; i < ROW*COL; i++) {
@@ -369,7 +369,7 @@ int main(int argc, char** argv)
     /* set alignment */
     size_t alignment = 0;
     if (align_str.empty()) {
-        alignment = 64;
+        alignment = 4 * 1024;
     } else {
         for (int i = 0; i < align_str.length(); i++) {
             int temp = (int)(align_str[i] - '0');

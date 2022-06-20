@@ -53,11 +53,13 @@ compute:
 #pragma HLS LOOP_TRIPCOUNT min = h max = h
         for (int j = 0; j < TILE_WIDTH; j++) {
     #pragma HLS LOOP_TRIPCOUNT min = w max = w
+            int32_t res = 0;
             for (int k = 0; k < TILE_WIDTH; k++ ) {
         #pragma HLS LOOP_TRIPCOUNT min = w max = w
         #pragma HLS PIPELINE II = 1
-                C[i * TILE_HEIGHT + j] += A[i * TILE_HEIGHT + k] * B[k * TILE_HEIGHT + j];
+                res += A[i * TILE_HEIGHT + k] * B[k * TILE_HEIGHT + j];
             }
+            C[i * TILE_HEIGHT + j] = res;
         }
     }
 }
