@@ -175,7 +175,7 @@ int unaligned_dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::
  * @param resPtr
  * @return int 
  */
-int aligned_dram_cpuMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int32_t* resPtr)
+int aligned_dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int32_t* resPtr)
 {
     int err;
     cl::Kernel kernel;
