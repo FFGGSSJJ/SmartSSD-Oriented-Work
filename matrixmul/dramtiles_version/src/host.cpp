@@ -368,16 +368,16 @@ int main(int argc, char** argv)
 
     /* set alignment */
     size_t alignment = 0;
-    if (align_str.empty()) {
-        alignment = 4 * 1024;
-    } else {
-        for (int i = 0; i < align_str.length(); i++) {
-            int temp = (int)(align_str[i] - '0');
-            for (int j = 0; j < i; j++)
-                temp *= 10;
-            alignment += (size_t)temp;
-        }
-    }
+    // if (align_str.empty()) {
+    //     alignment = 4 * 1024;
+    // } else {
+    //     for (int i = 0; i < align_str.length(); i++) {
+    //         int temp = (int)(align_str[i] - '0');
+    //         for (int j = 0; j < i; j++)
+    //             temp *= 10;
+    //         alignment += (size_t)temp;
+    //     }
+    // }
     /* Allocate matrix in DRAM */
     int32_t* unaligned_matC = (int32_t*)malloc((size_t)SIZE);
     int32_t* aligned_matC = (int32_t*)aligned_alloc(ALIGNMENT, ROW*COL*sizeof(int32_t));
