@@ -69,7 +69,7 @@ void flush_cachelines(void* ptr)
  * @param program 
  * @return int 
  */
-int unaligned_dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int32_t* resPtr)
+int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int32_t* resPtr)
 {
     int err;
     cl::Kernel kernel;
@@ -166,113 +166,6 @@ int unaligned_dram_devMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::
     }
     return EXIT_SUCCESS;
 }
-
-
-
-/**
- * @brief 
- * 
- * @param resPtr
- * @return int 
- */
-int aligned_dram_cpuMatrixMul(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int32_t* resPtr)
-{
-    int err;
-    cl::Kernel kernel;
-
-    /* Allocate space in DRAM for matrix A and B */
-    std::cout << "Allocate aligned space in CPU DRAM\n";
-    int32_t* matAdram = (int32_t*)aligned_alloc(ALIGNMENT, ROW*COL*sizeof(int32_t));
-    int32_t* matBdram = (int32_t*)aligned_alloc(ALIGNMENT, ROW*COL*sizeof(int32_t));
-
-    /* Initialize matrix */
-    for (int i = 0; i < ROW*COL; i++) {
-        matAdram[i] = 1;
-        matBdram[i] = 1;
-    }
-
-    flush_cachelines((void*)matAdram);
-    flush_cachelines((void*)matBdram);
-
-
-    /* Allocate global buffers in the global memory of device, make it p2p ext buffer */
-    std::cout << "Allocate global buffer in FPGA\n";
-    cl::Buffer matA(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, (size_t)SIZE, (void*)matAdram, &err);
-    cl::Buffer matB(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, (size_t)SIZE, (void*)matBdram, &err);
-    cl::Buffer matC(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, (size_t)SIZE, (void*)resPtr, &err);
-
-    /* Initialize the kernels */
-    std::string krn_name = "matmul";
-    OCL_CHECK(err, kernel = cl::Kernel(program, krn_name.c_str(), &err));
-
-    /* Set some args */
-    OCL_CHECK(err, err = kernel.setArg(0, matA));
-    OCL_CHECK(err, err = kernel.setArg(1, matB));
-    OCL_CHECK(err, err = kernel.setArg(2, matC));
-
-    /* transfer to load Matrix into FPGA */
-    cout << "Trying to transfer Matrix from Aligned DRAM into FPGA\n";
-    string size_str = xcl::convert_size(SIZE);
-
-    std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
-    /* Transfer matrix A and B*/
-    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({matA, matB}, 0 /* 0 means from host*/));
-    cmdq.finish();
-    std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
-
-
-    /* Calculate the transfer time and bandwidth */
-    cl_ulong Time = std::chrono::duration_cast<std::chrono::microseconds>(End1 - Start1).count();
-    double dnsduration = (double)Time;
-    double dsduration = dnsduration / ((double)1000000);
-    double gbpersec = (2 * SIZE / dsduration) / ((double)1024 * 1024 * 1024);
-    std::cout << "Buffer = " << size_str << " Iterations = " << 2 << " Throughput = " << std::setprecision(2)
-            << std::fixed << gbpersec << "GB/s\n";
-
-
-    /* Launch the kernels */
-    cout << "\nLaunch the Matrix Multiplication kernels" << endl;
-    std::chrono::high_resolution_clock::time_point matmul_start = std::chrono::high_resolution_clock::now();
-    OCL_CHECK(err, err = cmdq.enqueueTask(kernel));
-    cmdq.finish();
-    std::chrono::high_resolution_clock::time_point matmul_end = std::chrono::high_resolution_clock::now();
-
-    /* Calculate kernel launch time */
-    cl_ulong matTime = std::chrono::duration_cast<std::chrono::microseconds>(matmul_end - matmul_start).count();
-    dnsduration = (double)matTime;
-    dsduration = dnsduration / ((double)1000000);
-    cout << "Kernel execution time: " << dnsduration << "ns = " << dsduration << "s\n";
-    
-    /* transfer to load the result into DRAM */
-    cout << "\nTrying to transfer Matrix from FPGA into Aligned DRAM\n";
-    std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
-    /* Transfer matrix C */
-    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({matC}, CL_MIGRATE_MEM_OBJECT_HOST));
-    cmdq.finish();
-    std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
-
-    /* Calculate the transfer time and bandwidth */
-    cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
-    dnsduration = (double)Time2;
-    dsduration = dnsduration / ((double)1000000);
-    gbpersec = (SIZE / dsduration) / ((double)1024 * 1024 * 1024);
-    std::cout << "Buffer = " << size_str << " Iterations = " << 1 << " Throughput = " << std::setprecision(2)
-            << std::fixed << gbpersec << "GB/s\n";
-
-    /* free allocated space */
-    free(matAdram);
-    free(matBdram);
-
-    /* check the result */
-    for (int i = 0; i < ROW*COL; i++) {
-        if (resPtr[i] != ROW) {
-            cout << "result in dram pointer" << i << ": " << resPtr[i] << endl;
-            return EXIT_FAILURE;
-        }
-    }
-    return EXIT_SUCCESS;
-}
-
 
 
 
@@ -378,34 +271,25 @@ int main(int argc, char** argv)
             alignment += (size_t)temp;
         }
     }
-    /* Allocate matrix in DRAM */
-    int32_t* unaligned_matC = (int32_t*)malloc((size_t)SIZE);
-    int32_t* aligned_matC = (int32_t*)aligned_alloc(ALIGNMENT, ROW*COL*sizeof(int32_t));
+    /* Allocate Data in DRAM */
+    int32_t* original = (int32_t*)malloc((size_t)SIZE);
+    int32_t* compressed = (int32_t*)malloc((size_t)SIZE);
 
     /* Initialize matrix */
     for (int i = 0; i < ROW*COL; i++) {
-        unaligned_matC[i] = 0;
-        aligned_matC[i] = 0;
+        original[i] = 0;
+        compressed[i] = 0;
     }
 
     /* flush cache line */
-    flush_cachelines((void*)unaligned_matC);
-    flush_cachelines((void*)aligned_matC);
+    flush_cachelines((void*)original);
+    flush_cachelines((void*)compressed);
 
     /* Proceed for matrix multiplication */
     cout << "\n------------------------------------------------\n";
-    cout << "Perform Matrix Multiplication with unaligned DRAM\n";
+    cout << "Perform RLE compression with unaligned DRAM\n";
     cout << "-------------------------------------------------\n";
-    if (EXIT_FAILURE == unaligned_dram_devMatrixMul(context, cmdq, program, unaligned_matC))
-        cout << "TEST FAILED\n";
-    else
-        cout << "TEST PASSED\n";
-
-    /* Proceed for matrix multiplication */
-    cout << "\n----------------------------------------------\n";
-    cout << "Perform Matrix Multiplication with aligned DRAM\n";
-    cout << "-----------------------------------------------\n";
-    if (EXIT_FAILURE == aligned_dram_devMatrixMul(context, cmdq, program, aligned_matC))
+    if (EXIT_FAILURE == dram_compress(context, cmdq, program, unaligned_matC))
         cout << "TEST FAILED\n";
     else
         cout << "TEST PASSED\n";
@@ -413,17 +297,6 @@ int main(int argc, char** argv)
 
     /* Free allocated space */
     free(unaligned_matC);
-    free(aligned_matC);
-
-    // cout << "\n---------------------------------------\n";
-    // cout << "Perform Matrix Multiplication in Host\n";
-    // cout << "---------------------------------------\n";
-    // if (EXIT_SUCCESS == dram_cpuMatrixMul(matCcpu))
-    //     return EXIT_FAILURE;
-
-    // /* Check is the result matches */
-    // if (memcmp(matCcpu, matCdev, (size_t)SIZE) == 0)
-    //     cout << "TEST PASSED" << std::endl;
     
     return EXIT_SUCCESS;    
 }
