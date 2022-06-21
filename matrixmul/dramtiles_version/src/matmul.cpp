@@ -39,6 +39,7 @@ mem_rd:
         for (int j = 0; j < TILE_WIDTH; j++) {
     #pragma HLS LOOP_TRIPCOUNT min = w max = w
     #pragma HLS PIPELINE II = 1
+    #pragma HLS LOOP_FLATTEN
             out[i * TILE_HEIGHT + j] = in[(tile_x*TILE_HEIGHT + i)*WIDTH + tile_y*TILE_WIDTH + j];
         }
     }
@@ -74,10 +75,13 @@ mem_wr:
         for (int j = 0; j < TILE_WIDTH; j++) {
     #pragma HLS LOOP_TRIPCOUNT min = w max = w
     #pragma HLS PIPELINE II = 1
+    #pragma HLS LOOP_FLATTEN
             out[(tile_x*TILE_HEIGHT + i)*WIDTH + tile_y*TILE_WIDTH + j] += in[i * TILE_HEIGHT + j];
         }
     }
 }
+
+
 #endif
 
 
@@ -100,6 +104,7 @@ void matmul(int* matA, int* matB, int* outC)
         for (int j = 0; j < TILE_Y; j++) {
             for (int m = 0; m < TILE_X; m++) {
                 #pragma HLS DATAFLOW /* enable task-level pipelined */
+                #pragma HLS LOOP_FLATTEN
                 load_tile(matA, A, i, m);
                 load_tile(matB, B, m, j);
                 compute_tile(A, B, C);

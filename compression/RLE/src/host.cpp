@@ -69,48 +69,36 @@ void flush_cachelines(void* ptr)
  * @param program 
  * @return int 
  */
-int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int32_t* resPtr)
+int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int32_t* original, int32_t* compressed, int size)
 {
     int err;
     cl::Kernel kernel;
 
-    /* Allocate space in DRAM for matrix A and B */
-    std::cout << "Allocate space in CPU DRAM\n";
-    int32_t* matAdram = (int32_t*)malloc(ROW*COL*sizeof(int32_t));
-    int32_t* matBdram = (int32_t*)malloc(ROW*COL*sizeof(int32_t));
-
-    /* Initialize matrix */
-    for (int i = 0; i < ROW*COL; i++) {
-        matAdram[i] = 1;
-        matBdram[i] = 1;
-    }
-
-    flush_cachelines((void*)matAdram);
-    flush_cachelines((void*)matBdram);
+    flush_cachelines((void*)original);
+    flush_cachelines((void*)compressed);
 
 
-    /* Allocate global buffers in the global memory of device, make it p2p ext buffer */
+    /* Allocate global buffers in the global memory of device*/
     std::cout << "Allocate global buffer in FPGA\n";
-    cl::Buffer matA(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, (size_t)SIZE, (void*)matAdram, &err);
-    cl::Buffer matB(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, (size_t)SIZE, (void*)matBdram, &err);
-    cl::Buffer matC(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, (size_t)SIZE, (void*)resPtr, &err);
+    cl::Buffer origData(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, (size_t)size, (void*)original, &err);
+    cl::Buffer compData(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, (size_t)size, (void*)compressed, &err);
 
     /* Initialize the kernels */
-    std::string krn_name = "matmul";
+    std::string krn_name = "rle_compress";
     OCL_CHECK(err, kernel = cl::Kernel(program, krn_name.c_str(), &err));
 
     /* Set some args */
-    OCL_CHECK(err, err = kernel.setArg(0, matA));
-    OCL_CHECK(err, err = kernel.setArg(1, matB));
-    OCL_CHECK(err, err = kernel.setArg(2, matC));
+    OCL_CHECK(err, err = kernel.setArg(0, origData));
+    OCL_CHECK(err, err = kernel.setArg(1, compData));
+    OCL_CHECK(err, err = kernel.setArg(2, size));
 
-    /* transfer to load Matrix into FPGA */
-    cout << "Trying to transfer Matrix from DRAM into FPGA\n";
-    string size_str = xcl::convert_size(SIZE);
+    /* transfer to original data into FPGA */
+    cout << "Trying to transfer Original Data from DRAM into FPGA\n";
+    string size_str = xcl::convert_size(size);
 
     std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
     /* Transfer matrix A and B*/
-    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({matA, matB}, 0 /* 0 means from host*/));
+    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({origData}, 0 /* 0 means from host*/));
     cmdq.finish();
     std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
 
@@ -125,23 +113,23 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
 
 
     /* Launch the kernels */
-    cout << "\nLaunch the Matrix Multiplication kernels" << endl;
-    std::chrono::high_resolution_clock::time_point matmul_start = std::chrono::high_resolution_clock::now();
+    cout << "\nLaunch the RLE Compression kernel" << endl;
+    std::chrono::high_resolution_clock::time_point compress_start = std::chrono::high_resolution_clock::now();
     OCL_CHECK(err, err = cmdq.enqueueTask(kernel));
     cmdq.finish();
-    std::chrono::high_resolution_clock::time_point matmul_end = std::chrono::high_resolution_clock::now();
+    std::chrono::high_resolution_clock::time_point compress_end = std::chrono::high_resolution_clock::now();
 
     /* Calculate kernel launch time */
-    cl_ulong matTime = std::chrono::duration_cast<std::chrono::microseconds>(matmul_end - matmul_start).count();
-    dnsduration = (double)matTime;
+    cl_ulong CompressTime = std::chrono::duration_cast<std::chrono::microseconds>(compress_end - compress_start).count();
+    dnsduration = (double)CompressTime;
     dsduration = dnsduration / ((double)1000000);
     cout << "Kernel execution time: " << dnsduration << "ns = " << dsduration << "s\n";
     
     /* transfer to load the result into DRAM */
-    cout << "\nTrying to transfer Matrix from FPGA into DRAM\n";
+    cout << "\nTrying to transfer Compressed Data from FPGA into DRAM\n";
     std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
     /* Transfer matrix C */
-    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({matC}, CL_MIGRATE_MEM_OBJECT_HOST));
+    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({compData}, CL_MIGRATE_MEM_OBJECT_HOST));
     cmdq.finish();
     std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
 
@@ -153,17 +141,8 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     std::cout << "Buffer = " << size_str << " Iterations = " << 1 << " Throughput = " << std::setprecision(2)
             << std::fixed << gbpersec << "GB/s\n";
 
-    /* free allocated space */
-    free(matAdram);
-    free(matBdram);
-
     /* check the result */
-    for (int i = 0; i < ROW*COL; i++) {
-        if (resPtr[i] != ROW) {
-            cout << "result in dram pointer" << i << ": " << resPtr[i] << endl;
-            return EXIT_FAILURE;
-        }
-    }
+    
     return EXIT_SUCCESS;
 }
 
@@ -289,7 +268,7 @@ int main(int argc, char** argv)
     cout << "\n------------------------------------------------\n";
     cout << "Perform RLE compression with unaligned DRAM\n";
     cout << "-------------------------------------------------\n";
-    if (EXIT_FAILURE == dram_compress(context, cmdq, program, unaligned_matC))
+    if (EXIT_FAILURE == dram_compress(context, cmdq, program, original, compressed, SIZE))
         cout << "TEST FAILED\n";
     else
         cout << "TEST PASSED\n";

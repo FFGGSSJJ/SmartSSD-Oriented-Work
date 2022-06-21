@@ -76,8 +76,10 @@ int p2p_host_to_ssd(int& nvmeFd,
                 iter = 2; // Reducing iteration to run faster in emulation flow.
 
             std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
+            uint64_t offset = 0;
             for (int i = 0; i < iter; i++) {
-                ret = pread(nvmeFd, (void*)p2pPtr, bufsize, 0);
+                ret = pread(nvmeFd, (void*)p2pPtr, bufsize, offset);
+                offset += bufsize;
                 if (ret == -1) {
                     std::cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << std::endl;
                     return EXIT_FAILURE;
@@ -144,12 +146,13 @@ void p2p_ssd_to_host(int& nvmeFd,
                 iter = 2; // Reducing iteration to run faster in emulation flow.
             
             std::chrono::high_resolution_clock::time_point p2pStart = std::chrono::high_resolution_clock::now();
+            uint64_t offset = 0;
             for (int i = 0; i < iter; i++) {
-                if (pwrite(nvmeFd, (void*)p2pPtr1, bufsize, 0) <= 0) {
+                if (pwrite(nvmeFd, (void*)p2pPtr1, bufsize, offset) <= 0) {
                     std::cerr << "ERR: pwrite failed: "
                             << " error: " << strerror(errno) << std::endl;
                     exit(EXIT_FAILURE);
-                }
+                } offset += bufsize;
             }
             std::chrono::high_resolution_clock::time_point p2pEnd = std::chrono::high_resolution_clock::now();
             cl_ulong p2pTime = std::chrono::duration_cast<std::chrono::microseconds>(p2pEnd - p2pStart).count();
