@@ -188,7 +188,7 @@ void rle_compress(ap_int<256>* original, uint8_t* compressed, int size, int32_t*
     }
 
     /* Update compression info */
-    info[0] = encodeTotSize
+    info[0] = encodeTotSize;
 }
 
 }

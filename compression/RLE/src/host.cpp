@@ -95,8 +95,8 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     cout << "Trying to transfer Original Data from DRAM into FPGA\n";
     string size_str = xcl::convert_size(size);
 
+    /* Transfer original data */
     std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
-    /* Transfer matrix A and B*/
     OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({origData}, 0 /* 0 means from host*/));
     cmdq.finish();
     std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
@@ -106,7 +106,7 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     cl_ulong Time = std::chrono::duration_cast<std::chrono::microseconds>(End1 - Start1).count();
     double dnsduration = (double)Time;
     double dsduration = dnsduration / ((double)1000000);
-    double gbpersec = (2 * SIZE / dsduration) / ((double)1024 * 1024 * 1024);
+    double gbpersec = (SIZE / dsduration) / ((double)1024 * 1024 * 1024);
     std::cout << "Data Size = " << size_str << " Throughput = " << std::setprecision(2)
             << std::fixed << gbpersec << "GB/s\n";
 
