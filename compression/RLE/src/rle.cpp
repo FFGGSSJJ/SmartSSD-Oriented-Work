@@ -15,6 +15,7 @@
 #include <hls_stream.h>
 #include <cstdint>
 #include <iostream>
+#include <string.h>
 using namespace::std;
 
 /* define */

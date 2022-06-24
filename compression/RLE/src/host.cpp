@@ -71,7 +71,6 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     int32_t* compinfo = (int32_t*)malloc(10*sizeof(int32_t));
     for (int i = 0; i < 10; i++)    compinfo[i] = 0;
 
-    flush_cachelines((void*)compinfo);
     flush_cachelines((void*)original);
     flush_cachelines((void*)compressed);
 
