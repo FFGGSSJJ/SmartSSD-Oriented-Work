@@ -27,20 +27,13 @@ using std::string;
 using std::endl;
 
 /* Macros */
-#define SSD2FPGA    0
-#define FPGA2SSD    1
 #define ALIGNMENT   64
 #define ROW         1024
 #define COL         1024
-#define TILE_WIDTH  256
-#define TILE_HEIGHT 256
-#define TILE_ROW    ROW/TILE_HEIGHT
-#define TILE_COL    COL/TILE_WIDTH
-#define TILE_NUM    TILE_ROW * TILE_COL
-#define BytesPerNum 4
+#define BytesPerNum 8
 #define BytesPerKB  1024
 #define BytesPerMB  1024*1024
-#define SIZE        ROW*COL*BytesPerNum // 64MB
+#define SIZE        1024 * 8 // 8KB
 
 /* Global var for buffer size */
 size_t max_buffer = 16 * 1024 * 1024;   // 16MB
@@ -62,18 +55,23 @@ void flush_cachelines(void* ptr)
 }
 
 /**
- * @brief MatrixMul
+ * @brief compressed
  * 
  * @param context 
  * @param cmdq 
  * @param program 
  * @return int 
  */
-int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int32_t* original, int32_t* compressed, int size)
+int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, uint8_t* original, uint8_t* compressed, int size)
 {
     int err;
     cl::Kernel kernel;
 
+    /* Allocate space to store information of compression */
+    int32_t* compinfo = malloc(10*sizeof(int32_t));
+    for (int i = 0; i < 10; i++)    compinfo[i] = 0
+
+    flush_cachelines((void*)compinfo);
     flush_cachelines((void*)original);
     flush_cachelines((void*)compressed);
 
@@ -82,6 +80,7 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     std::cout << "Allocate global buffer in FPGA\n";
     cl::Buffer origData(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, (size_t)size, (void*)original, &err);
     cl::Buffer compData(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, (size_t)size, (void*)compressed, &err);
+    cl::Buffer infoBuf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, 10*sizeof(int32_t), (void*)compinfo, &err);
 
     /* Initialize the kernels */
     std::string krn_name = "rle_compress";
@@ -91,6 +90,7 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     OCL_CHECK(err, err = kernel.setArg(0, origData));
     OCL_CHECK(err, err = kernel.setArg(1, compData));
     OCL_CHECK(err, err = kernel.setArg(2, size));
+    OCL_CHECK(err, err = kernel.setArg(3, infoBuf));
 
     /* transfer to original data into FPGA */
     cout << "Trying to transfer Original Data from DRAM into FPGA\n";
@@ -108,7 +108,7 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     double dnsduration = (double)Time;
     double dsduration = dnsduration / ((double)1000000);
     double gbpersec = (2 * SIZE / dsduration) / ((double)1024 * 1024 * 1024);
-    std::cout << "Buffer = " << size_str << " Iterations = " << 2 << " Throughput = " << std::setprecision(2)
+    std::cout << "Data Size = " << size_str << " Throughput = " << std::setprecision(2)
             << std::fixed << gbpersec << "GB/s\n";
 
 
@@ -129,20 +129,29 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     cout << "\nTrying to transfer Compressed Data from FPGA into DRAM\n";
     std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
     /* Transfer matrix C */
-    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({compData}, CL_MIGRATE_MEM_OBJECT_HOST));
+    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({compData, infoBuf}, CL_MIGRATE_MEM_OBJECT_HOST));
     cmdq.finish();
     std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
 
     /* Calculate the transfer time and bandwidth */
     cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
+
+    size_str = xcl::convert_size(compinfo[0]);
     dnsduration = (double)Time2;
     dsduration = dnsduration / ((double)1000000);
-    gbpersec = (SIZE / dsduration) / ((double)1024 * 1024 * 1024);
-    std::cout << "Buffer = " << size_str << " Iterations = " << 1 << " Throughput = " << std::setprecision(2)
+    gbpersec = (compinfo[0] / dsduration) / ((double)1024 * 1024 * 1024);
+    std::cout << "Compressed Size = " << size_str << " Throughput = " << std::setprecision(2)
             << std::fixed << gbpersec << "GB/s\n";
 
     /* check the result */
-    
+    double ratio = compinfo[0]/size;
+    cout << "Compress Ratio = " << ratio << endl;
+
+    cout << "\n\nCompress Data: \n";
+    for (int i = 0; i < compinfo[0]; i++) {
+        cout << compressed[i];
+    }
+
     return EXIT_SUCCESS;
 }
 
@@ -250,13 +259,15 @@ int main(int argc, char** argv)
             alignment += (size_t)temp;
         }
     }
+
+    
     /* Allocate Data in DRAM */
-    int32_t* original = (int32_t*)malloc((size_t)SIZE);
-    int32_t* compressed = (int32_t*)malloc((size_t)SIZE);
+    uint8_t* original = (uint8_t*)malloc((size_t)SIZE);
+    uint8_t* compressed = (uint8_t*)malloc((size_t)SIZE);
 
     /* Initialize matrix */
-    for (int i = 0; i < ROW*COL; i++) {
-        original[i] = 0;
+    for (int i = 0; i < SIZE; i++) {
+        original[i] = i > SIZE/2 ? 'a' : 'b';
         compressed[i] = 0;
     }
 
@@ -275,7 +286,8 @@ int main(int argc, char** argv)
     
 
     /* Free allocated space */
-    free(unaligned_matC);
+    free(original);
+    free(compressed);
     
     return EXIT_SUCCESS;    
 }

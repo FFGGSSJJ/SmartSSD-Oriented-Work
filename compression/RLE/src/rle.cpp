@@ -93,6 +93,7 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
     
     /* Byte-level run check */
     for (int i = 1; i < BLOCK_SIZE * BytesPerNum; i++) {
+    
         int8_t curr = orgData[i];
 
         /* if run count has reached 127 */
@@ -152,14 +153,16 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
 
 extern "C" {
 
-void rle_compress(ap_int<256>* original, uint8_t* compressed, int size)
+void rle_compress(ap_int<256>* original, uint8_t* compressed, int size, int32_t* info)
 {
 #if BURST
 #pragma HLS INTERFACE m_axi port = original bundle = gmem0 num_read_outstanding = 32 max_read_burst_length = 32 offset = slave
 #pragma HLS INTERFACE m_axi port = compressed bundle = gmem1 num_write_outstanding = 32 max_write_burst_length = 32 offset = slave
+#pragma HLS INTERFACE m_axi port = info bundle = gmem2
 #else
 #pragma HLS INTERFACE m_axi port = original bundle = gmem0
 #pragma HLS INTERFACE m_axi port = compressed bundle = gmem1
+#pragma HLS INTERFACE m_axi port = info bundle = gmem2
 #endif
 
     /* local blocks */
@@ -180,6 +183,9 @@ void rle_compress(ap_int<256>* original, uint8_t* compressed, int size)
         StoreData((uint8_t*)compBlock, (uint8_t*)compressed, encodeBlkSize, encodeTotSize, BURST_SIZE);
         encodeTotSize += encodeBlkSize;
     }
+
+    /* Update compression info */
+    info[0] = encodeTotSize
 }
 
 }
