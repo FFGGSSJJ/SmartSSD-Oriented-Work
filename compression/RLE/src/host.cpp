@@ -68,8 +68,8 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     cl::Kernel kernel;
 
     /* Allocate space to store information of compression */
-    int32_t* compinfo = malloc(10*sizeof(int32_t));
-    for (int i = 0; i < 10; i++)    compinfo[i] = 0
+    int32_t* compinfo = (int32_t*)malloc(10*sizeof(int32_t));
+    for (int i = 0; i < 10; i++)    compinfo[i] = 0;
 
     flush_cachelines((void*)compinfo);
     flush_cachelines((void*)original);
@@ -248,19 +248,19 @@ int main(int argc, char** argv)
         cout << "Device[" << dev_id << "]: program successful!\n";
 
     /* set alignment */
-    size_t alignment = 0;
-    if (align_str.empty()) {
-        alignment = 64;
-    } else {
-        for (int i = 0; i < align_str.length(); i++) {
-            int temp = (int)(align_str[i] - '0');
-            for (int j = 0; j < i; j++)
-                temp *= 10;
-            alignment += (size_t)temp;
-        }
-    }
+    // size_t alignment = 0;
+    // if (align_str.empty()) {
+    //     alignment = 64;
+    // } else {
+    //     for (int i = 0; i < align_str.length(); i++) {
+    //         int temp = (int)(align_str[i] - '0');
+    //         for (int j = 0; j < i; j++)
+    //             temp *= 10;
+    //         alignment += (size_t)temp;
+    //     }
+    // }
 
-    
+
     /* Allocate Data in DRAM */
     uint8_t* original = (uint8_t*)malloc((size_t)SIZE);
     uint8_t* compressed = (uint8_t*)malloc((size_t)SIZE);
