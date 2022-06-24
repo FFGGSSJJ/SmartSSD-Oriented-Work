@@ -112,7 +112,9 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
                 count = 0;
                 prev = curr;
                 continue;
-            } else { /* proceed on literal check */
+            } 
+            /* proceed on literal check */
+            else { 
                 compData[++encodelen] = prev;
                 ++count &= 0x7F;
                 compData[encodelen - count] = count;
