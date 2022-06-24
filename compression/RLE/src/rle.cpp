@@ -14,6 +14,7 @@
 #include "ap_int.h"
 #include <hls_stream.h>
 #include <cstdint>
+using namespace::std;
 
 /* define */
 #define BURST       0
