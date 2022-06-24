@@ -82,7 +82,7 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     cl::Buffer infoBuf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, 10*sizeof(int32_t), (void*)compinfo, &err);
 
     /* Initialize the kernels */
-    std::string krn_name = "rle_compress";
+    std::string krn_name = "rle";
     OCL_CHECK(err, kernel = cl::Kernel(program, krn_name.c_str(), &err));
 
     /* Set some args */

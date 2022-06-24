@@ -156,7 +156,7 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
 
 extern "C" {
 
-void rle_compress(ap_int<256>* original, uint8_t* compressed, int size, int32_t* info)
+void rle(ap_int<256>* original, uint8_t* compressed, int size, int32_t* info)
 {
 #if BURST
 #pragma HLS INTERFACE m_axi port = original bundle = gmem0 num_read_outstanding = 32 max_read_burst_length = 32 offset = slave
