@@ -10,6 +10,8 @@
 #define BytesPerMB  1024*1024
 #define BLOCK_SIZE  1024*BytesPerNum    // 1024 * 8 Byte
 #define BURST_SIZE  32      // 32 Byte
+#define SIZE        BLOCK_SIZE
+using namespace::std;
 
 
 /* Compression */
@@ -78,4 +80,30 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
     }
 
     return encodelen;
+}
+
+
+int main()
+{
+    /* Allocate Data in DRAM */
+    uint8_t* original = (uint8_t*)malloc((size_t)SIZE);
+    uint8_t* compressed = (uint8_t*)malloc((size_t)SIZE);
+
+    /* Initialize matrix */
+    for (int i = 0; i < SIZE; i++) {
+        original[i] = i > SIZE/2 ? 'a' : 'b';
+        compressed[i] = 0;
+    }
+
+    /* Proceed for matrix multiplication */
+    int32_t encodelen = 0;
+    cout << "\n------------------------------------------------\n";
+    cout << "Perform RLE compression with unaligned DRAM\n";
+    cout << "-------------------------------------------------\n";
+    encodelen = encodeByteLevel(original, compressed);
+
+    cout << "Compressed length: " << encodelen << endl;
+    cout << "Compressed Data: \n";
+    for (int i = 0; i < encodelen; i++)
+        cout << compressed[i];
 }
