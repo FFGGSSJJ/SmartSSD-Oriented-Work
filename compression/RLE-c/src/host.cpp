@@ -93,7 +93,7 @@ int main()
 
     /* Initialize matrix */
     for (int i = 0; i < SIZE; i++) {
-        original[i] ='b';
+        original[i] = i > SIZE/2 ? 'a' : 'b';
         compressed[i] = 0;
     }
 
