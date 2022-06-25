@@ -61,7 +61,7 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
         /* encoded run */
         if (prev == curr) {
             /* if literal run check previously */
-            if ((count & 0x80) == 0x00) {
+            if ((count & 0x80) == 0x00 && encodelen != 0 && ((count & 0x7F) > 0)) {
                 encodelen++;
                 count = 0x80;
             }
@@ -72,13 +72,14 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
     /* if encoded run check */
     if ((count & 0x80) == 0x80) {
         compData[encodelen++] = (++count);
-        compData[encodelen] = prev;
+        compData[encodelen++] = prev;
     }
     /* if literal run check */
     else { 
         compData[++encodelen] = prev;
         ++count &= 0x7F;
         compData[encodelen - count] = count;
+        ++encodelen;
     }
 
     return encodelen;
@@ -93,7 +94,9 @@ int main()
 
     /* Initialize matrix */
     for (int i = 0; i < SIZE; i++) {
-        original[i] = i > SIZE/2 ? 'a' : 'b';
+        if (i%4 == 0)   original[i] = 'a';
+        else if (i%4 == 1)  original[i] = 'b';
+        else                original[i] = 'd';
         compressed[i] = 0;
     }
 

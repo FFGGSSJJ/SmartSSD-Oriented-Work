@@ -95,16 +95,17 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
     uint32_t encodelen = 0;
     
     /* Byte-level run check */
-    for (int i = 1; i < BLOCK_SIZE * BytesPerNum; i++) {
+    for (int i = 1; i < BLOCK_SIZE; i++) {
     
         int8_t curr = orgData[i];
 
         /* if run count has reached 127 */
-        if ((count & 0x7F) >= 127) {
+        if ((count & 0x7F) >= 0x7F) {
             compData[encodelen++] = count;
             compData[encodelen++] = prev;
-            count = 0;
+            count &= 0x80;      /* maintain the previous run prefix while clear the count */
             prev = curr;
+            continue;
         }
 
         /* literal run */
@@ -130,23 +131,25 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
         /* encoded run */
         if (prev == curr) {
             /* if literal run check previously */
-            if ((count & 0x80) == 0x00) {
+            if ((count & 0x80) == 0x00 && encodelen != 0 && ((count & 0x7F) > 0)) {
                 encodelen++;
                 count = 0x80;
-            } count++;
+            }
+            ++count |= 0x80; 
         }
     }
 
     /* if encoded run check */
     if ((count & 0x80) == 0x80) {
         compData[encodelen++] = (++count);
-        compData[encodelen] = prev;
+        compData[encodelen++] = prev;
     }
     /* if literal run check */
     else { 
         compData[++encodelen] = prev;
         ++count &= 0x7F;
         compData[encodelen - count] = count;
+        ++encodelen;
     }
 
     return encodelen;
