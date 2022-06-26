@@ -183,7 +183,7 @@ void rle(ap_int<256>* original, uint8_t* compressed, int size, int32_t* info)
     int iter = size/(BLOCK_SIZE);
     for (int i = 0; i < iter; i++) {
     //#pragma HLS DATAFLOW /* enable task-level pipelined */
-    #pragma HLS LOOP_FLATTEN
+    //#pragma HLS LOOP_FLATTEN
         LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, BURST_SIZE, i);
         encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock);
         StoreData((uint8_t*)compBlock, (uint8_t*)compressed, encodeBlkSize, encodeTotSize, BURST_SIZE);

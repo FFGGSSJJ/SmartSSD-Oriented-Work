@@ -135,21 +135,22 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     /* Calculate the transfer time and bandwidth */
     cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
 
-    size_str = xcl::convert_size(compinfo[0]);
+    int compsize = compinfo[0]
+    size_str = xcl::convert_size(compsize);
     dnsduration = (double)Time2;
     dsduration = dnsduration / ((double)1000000);
-    gbpersec = (compinfo[0] / dsduration) / ((double)1024 * 1024 * 1024);
+    gbpersec = (compsize / dsduration) / ((double)1024 * 1024 * 1024);
     std::cout << "Compressed Size = " << size_str << " Throughput = " << std::setprecision(2)
             << std::fixed << gbpersec << "GB/s\n";
 
     /* check the result */
-    double ratio = compinfo[0]/size;
+    double ratio = compsize/size;
     cout << "Compress Ratio = " << ratio << endl;
 
     cout << "\n\nCompress Data: \n";
-    for (int i = 0; i < compinfo[0]; i++) {
-        cout << compressed[i];
-    }
+    // for (int i = 0; i < compsize; i++) {
+    //     cout << compressed[i];
+    // }
 
     return EXIT_SUCCESS;
 }

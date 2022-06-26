@@ -109,6 +109,5 @@ int main()
 
     cout << "Compressed length: " << encodelen << endl;
     cout << "Compressed Data: \n";
-    for (int i = 0; i < encodelen; i++)
-        cout << compressed[i];
-}
+    cout << (int)compressed[0];
+} 

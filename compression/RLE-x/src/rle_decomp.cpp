@@ -61,8 +61,8 @@ void rle_decomp(ap_int<256>* compressed, uint8_t* original, int size, int32_t* i
 #pragma HLS INTERFACE m_axi port = original bundle = gmem1 num_write_outstanding = 32 max_write_burst_length = 32 offset = slave
 #pragma HLS INTERFACE m_axi port = info bundle = gmem2
 #else
-#pragma HLS INTERFACE m_axi port = compressed bundle = gmem0
-#pragma HLS INTERFACE m_axi port = original bundle = gmem1
+#pragma HLS INTERFACE m_axi port = original bundle = gmem0
+#pragma HLS INTERFACE m_axi port = compressed bundle = gmem1
 #pragma HLS INTERFACE m_axi port = info bundle = gmem2
 #endif
 
