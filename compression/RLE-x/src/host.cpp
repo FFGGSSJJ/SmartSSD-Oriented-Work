@@ -135,7 +135,7 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     /* Calculate the transfer time and bandwidth */
     cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
 
-    int compsize = compinfo[0]
+    int compsize = compinfo[0];
     size_str = xcl::convert_size(compsize);
     dnsduration = (double)Time2;
     dsduration = dnsduration / ((double)1000000);
