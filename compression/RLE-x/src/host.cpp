@@ -99,12 +99,12 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     /* Set some args */
     OCL_CHECK(err, err = kernel.setArg(0, origData));
     OCL_CHECK(err, err = kernel.setArg(1, compData));
-    OCL_CHECK(err, err = kernel.setArg(2, size));
+    OCL_CHECK(err, err = kernel.setArg(2, SIZE));
     OCL_CHECK(err, err = kernel.setArg(3, infoBuf));
 
     /* transfer to original data into FPGA */
     cout << "Trying to transfer Original Data from DRAM into FPGA\n";
-    string size_str = xcl::convert_size(size);
+    string size_str = xcl::convert_size(SIZE);
 
     /* Transfer original data */
     std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
