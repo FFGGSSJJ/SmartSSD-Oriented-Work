@@ -79,7 +79,7 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     std::cout << "Allocate global buffer in FPGA\n";
     cl::Buffer origData(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, (size_t)size, (void*)original, &err);
     cl::Buffer compData(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, (size_t)size, (void*)compressed, &err);
-    cl::Buffer infoBuf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, 10*sizeof(int32_t), (void*)compinfo, &err);
+    cl::Buffer infoBuf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, 1*sizeof(int32_t), (void*)compinfo, &err);
 
     /* Initialize the kernels */
     std::string krn_name = "rle";
@@ -133,6 +133,7 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
 
     /* Transfer info buffer */
+    cout << "\nTrying to transfer Info from FPGA into DRAM\n";
     OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({infoBuf}, CL_MIGRATE_MEM_OBJECT_HOST));
     cmdq.finish();
 
