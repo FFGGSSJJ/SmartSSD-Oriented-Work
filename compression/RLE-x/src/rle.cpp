@@ -163,7 +163,7 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
 
 extern "C" {
 
-void rle(uint8_t* original, uint8_t* compressed, int size, int32_t* info)
+void rle(uint8_t* original, uint8_t* compressed, int size)
 {
 #if BURST
 #pragma HLS INTERFACE m_axi port = original bundle = gmem0 num_read_outstanding = 32 max_read_burst_length = 32 offset = slave
@@ -194,12 +194,9 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int32_t* info)
     for (int i = 0; i < iter; i++) {
         LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, BURST_SIZE, i);
         //encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock);
-        StoreData((uint8_t*)compBlock, (uint8_t*)compressed, encodeBlkSize, encodeTotSize, BURST_SIZE);
+        StoreData((uint8_t*)origBlock, (uint8_t*)compressed, encodeBlkSize, encodeTotSize, BURST_SIZE);
         encodeTotSize += encodeBlkSize;
     }
-
-    /* Update compression info */
-    info[0] = 99;
 }
 
 }

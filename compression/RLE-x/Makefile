@@ -108,7 +108,7 @@ EMCONFIG_DIR = $(TEMP_DIR)
 ############################## Declaring Binary Containers ##############################
 BINARY_CONTAINERS += $(BUILD_DIR)/rle.xclbin
 BINARY_CONTAINER_rle_OBJS += $(TEMP_DIR)/rle.xo
-BINARY_CONTAINER_rle_OBJS += $(TEMP_DIR)/rle_decomp.xo
+# BINARY_CONTAINER_rle_OBJS += $(TEMP_DIR)/rle_decomp.xo
 ############################## Setting Targets ##############################
 CP = cp -rf
 
@@ -128,9 +128,9 @@ xclbin: build
 $(TEMP_DIR)/rle.xo: src/rle.cpp
 	mkdir -p $(TEMP_DIR)
 	$(VPP) $(VPP_FLAGS) -c -k rle --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
-$(TEMP_DIR)/rle_decomp.xo: src/rle_decomp.cpp
-	mkdir -p $(TEMP_DIR)
-	$(VPP) $(VPP_FLAGS) -c -k rle_decomp --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
+# $(TEMP_DIR)/rle_decomp.xo: src/rle_decomp.cpp
+# 	mkdir -p $(TEMP_DIR)
+# 	$(VPP) $(VPP_FLAGS) -c -k rle_decomp --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
 $(BUILD_DIR)/rle.xclbin: $(BINARY_CONTAINER_rle_OBJS)
 	mkdir -p $(BUILD_DIR)
 	$(VPP) $(VPP_FLAGS) -l $(VPP_LDFLAGS) --temp_dir $(TEMP_DIR) -o'$(BUILD_DIR)/rle.link.xclbin' $(+)
