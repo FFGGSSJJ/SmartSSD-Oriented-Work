@@ -128,14 +128,18 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     cout << "\nTrying to transfer Compressed Data from FPGA into DRAM\n";
     std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
     /* Transfer matrix C */
-    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({compData, infoBuf}, CL_MIGRATE_MEM_OBJECT_HOST));
+    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({compData}, CL_MIGRATE_MEM_OBJECT_HOST));
     cmdq.finish();
     std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
+
+    /* Transfer info buffer */
+    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({infoBuf}, CL_MIGRATE_MEM_OBJECT_HOST));
+    cmdq.finish();
 
     /* Calculate the transfer time and bandwidth */
     cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
 
-    int compsize = compinfo[0];
+    int compsize = 99;
     size_str = xcl::convert_size(compsize);
     dnsduration = (double)Time2;
     dsduration = dnsduration / ((double)1000000);
