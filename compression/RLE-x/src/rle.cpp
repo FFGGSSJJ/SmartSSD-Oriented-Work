@@ -81,6 +81,9 @@ mem_wt:
     for (int i = 0; i < encodeBlkSize; i++) {
         out[encodeTotSize + i] = in[i];
     }
+    for (int i = encodeBlkSize; i < BLOCK_SIZE; i++) {
+        out[i] = 0;
+    }
 }
 #endif
 
@@ -174,8 +177,14 @@ void rle(ap_int<256>* original, uint8_t* compressed, int size, int32_t* info)
 #endif
 
     /* local blocks */
-    uint64_t origBlock[BLOCK_SIZE/BytesPerNum];
-    uint64_t compBlock[BLOCK_SIZE/BytesPerNum + 1];
+    uint8_t origBlock[BLOCK_SIZE];
+    uint8_t compBlock[BLOCK_SIZE + 1];
+
+    for (int i = 0; i < BLOCK_SIZE; i++) {
+    #pragma HLS PIPELINE II = 1
+        origBlock[i] = 0;
+        compBlock[i] = 0;
+    } compBlock[BLOCK_SIZE] = 0;
 
     /* size in byte */
     int encodeBlkSize = 0;
