@@ -168,6 +168,10 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     //     cout << compressed[i];
     // }
 
+    /* Free allocated space */
+    free(original);
+    free(compressed);
+
     return EXIT_SUCCESS;
 }
 
@@ -284,11 +288,6 @@ int main(int argc, char** argv)
         cout << "TEST FAILED\n";
     else
         cout << "TEST PASSED\n";
-    
-
-    /* Free allocated space */
-    free(original);
-    free(compressed);
     
     return EXIT_SUCCESS;    
 }
