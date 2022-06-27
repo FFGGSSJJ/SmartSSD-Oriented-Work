@@ -62,7 +62,7 @@ void flush_cachelines(void* ptr)
  * @param program 
  * @return int 
  */
-int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, uint8_t* original, uint8_t* compressed, int size)
+int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program)
 {
     int err;
     cl::Kernel kernel;
@@ -71,6 +71,17 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     int32_t* compinfo = (int32_t*)malloc(10*sizeof(int32_t));
     for (int i = 0; i < 10; i++)    compinfo[i] = 0;
 
+    /* Allocate Data in DRAM */
+    uint8_t* original = (uint8_t*)malloc((size_t)SIZE);
+    uint8_t* compressed = (uint8_t*)malloc((size_t)SIZE);
+
+    /* Initialize matrix */
+    for (int i = 0; i < SIZE; i++) {
+        original[i] = i > SIZE/2 ? 'a' : 'b';
+        compressed[i] = 0;
+    }
+
+    /* flush cache line */
     flush_cachelines((void*)original);
     flush_cachelines((void*)compressed);
 
@@ -265,26 +276,11 @@ int main(int argc, char** argv)
     //     }
     // }
 
-
-    /* Allocate Data in DRAM */
-    uint8_t* original = (uint8_t*)malloc((size_t)SIZE);
-    uint8_t* compressed = (uint8_t*)malloc((size_t)SIZE);
-
-    /* Initialize matrix */
-    for (int i = 0; i < SIZE; i++) {
-        original[i] = i > SIZE/2 ? 'a' : 'b';
-        compressed[i] = 0;
-    }
-
-    /* flush cache line */
-    flush_cachelines((void*)original);
-    flush_cachelines((void*)compressed);
-
     /* Proceed for matrix multiplication */
     cout << "\n------------------------------------------------\n";
     cout << "Perform RLE compression with unaligned DRAM\n";
     cout << "-------------------------------------------------\n";
-    if (EXIT_FAILURE == dram_compress(context, cmdq, program, original, compressed, SIZE))
+    if (EXIT_FAILURE == dram_compress(context, cmdq, program))
         cout << "TEST FAILED\n";
     else
         cout << "TEST PASSED\n";

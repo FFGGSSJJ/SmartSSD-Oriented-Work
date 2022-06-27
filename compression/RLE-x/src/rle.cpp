@@ -72,17 +72,16 @@ mem_bwt:
 void LoadData(uint8_t* in, uint8_t* out, int remain_size, int block_size, int burst_size, int blockId)
 {
 mem_rd:
-    memcpy((void*)out, (void*)(in + blockId*block_size), block_size);
+    for (int i = 0; i < block_size; i++) {
+        out[blockId*block_size + i] = in[i];
+    }
 }
 
 void StoreData(uint8_t* in, uint8_t* out, int encodeBlkSize, int encodeTotSize, int burst_size)
 {
 mem_wt:
-    for (int i = 0; i < encodeBlkSize; i++) {
-        out[encodeTotSize + i] = in[i];
-    }
-    for (int i = encodeBlkSize; i < BLOCK_SIZE; i++) {
-        out[i] = 0;
+    for (int i = 0; i < BLOCK_SIZE; i++) {
+        out[i] = in[i];
     }
 }
 #endif
@@ -164,7 +163,7 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
 
 extern "C" {
 
-void rle(ap_int<256>* original, uint8_t* compressed, int size, int32_t* info)
+void rle(uint8_t* original, uint8_t* compressed, int size, int32_t* info)
 {
 #if BURST
 #pragma HLS INTERFACE m_axi port = original bundle = gmem0 num_read_outstanding = 32 max_read_burst_length = 32 offset = slave
@@ -183,8 +182,8 @@ void rle(ap_int<256>* original, uint8_t* compressed, int size, int32_t* info)
     for (int i = 0; i < BLOCK_SIZE; i++) {
     #pragma HLS PIPELINE II = 1
         origBlock[i] = 0;
-        compBlock[i] = 0;
-    } compBlock[BLOCK_SIZE] = 0;
+        compBlock[i] = 99;
+    } compBlock[BLOCK_SIZE] = 99;
 
     /* size in byte */
     int encodeBlkSize = 0;
@@ -193,16 +192,14 @@ void rle(ap_int<256>* original, uint8_t* compressed, int size, int32_t* info)
     /* */
     int iter = size/(BLOCK_SIZE);
     for (int i = 0; i < iter; i++) {
-    //#pragma HLS DATAFLOW /* enable task-level pipelined */
-    //#pragma HLS LOOP_FLATTEN
         LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, BURST_SIZE, i);
-        encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock);
+        //encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock);
         StoreData((uint8_t*)compBlock, (uint8_t*)compressed, encodeBlkSize, encodeTotSize, BURST_SIZE);
         encodeTotSize += encodeBlkSize;
     }
 
     /* Update compression info */
-    info[0] = encodeTotSize;
+    info[0] = 99;
 }
 
 }
