@@ -160,8 +160,6 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
             << std::fixed << gbpersec << "GB/s\n";
 
     /* check the result */
-    double ratio = compsize/size;
-    cout << "Compress Ratio = " << ratio << endl;
 
     cout << "\n\nCompress Data: \n";
     // for (int i = 0; i < compsize; i++) {
