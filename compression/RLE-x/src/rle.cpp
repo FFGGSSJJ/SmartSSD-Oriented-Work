@@ -78,7 +78,9 @@ mem_rd:
 void StoreData(uint8_t* in, uint8_t* out, int encodeBlkSize, int encodeTotSize, int burst_size)
 {
 mem_wt:
-    memcpy((void*)(out + encodeTotSize), (void*)in, encodeBlkSize);
+    for (int i = 0; i < encodeBlkSize; i++) {
+        out[encodeTotSize + i] = in[i];
+    }
 }
 #endif
 
