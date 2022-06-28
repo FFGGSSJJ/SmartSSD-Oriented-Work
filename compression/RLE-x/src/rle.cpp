@@ -69,31 +69,35 @@ mem_bwt:
     return;
 }
 #else /* Normal Memory IO*/
-void LoadData(uint8_t* in, uint8_t* out, int remain_size, int block_size, int burst_size, int blockId)
+int LoadData(uint8_t* in, uint8_t* out, int remain_size, int block_size, int blockId)
 {
+    int size2read = remain_size > block_size ? block_size : remain_size;
 mem_rd:
-    for (int i = 0; i < block_size; i++) {
+    for (int i = 0; i < size2read; i++) {
         out[blockId*block_size + i] = in[i];
     }
+    return size2read;
     //memcpy((void*)(out + blockId*block_size), (void*)in, block_size);
 }
 
-void StoreData(uint8_t* in, uint8_t* out, int encodeBlkSize, int encodeTotSize, int burst_size)
+void StoreData(uint8_t* in, uint8_t* out, int encodeBlkSize, int encodeTotSize)
 {
 mem_wt:
     for (int i = 0; i < encodeBlkSize; i++) {
         out[encodeTotSize + i] = in[i];
     }
-    for (int i = encodeBlkSize; i < BLOCK_SIZE; i++) {
+
+    /* to avoid dma fail */
+    for (int i = encodeBlkSize; i < BLOCK_SIZE; i++) 
         out[encodeTotSize + i] = 0;
-    }
+    
 }
 #endif
 
 
 
 /* Compression */
-static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
+static int encodeByteLevel(uint8_t* orgData, uint8_t* compData, int orgSize)
 {
     if (orgData == NULL || compData == NULL)    return -1;
 
@@ -103,7 +107,7 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
     uint32_t encodelen = 0;
     
     /* Byte-level run check */
-    for (int i = 1; i < BLOCK_SIZE; i++) {
+    for (int i = 1; i < orgSize; i++) {
     
         int8_t curr = orgData[i];
 
@@ -183,15 +187,16 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int32_t* info)
     uint8_t compBlock[BLOCK_SIZE + 1];
 
     /* size in byte */
+    int loadedSize = 0;
     int encodeBlkSize = 0;
     int encodeTotSize = 0;
 
     /* */
     int iter = size/(BLOCK_SIZE);
     for (int i = 0; i < iter; i++) {
-        LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, BURST_SIZE, i);
-        encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock);
-        StoreData((uint8_t*)compBlock, (uint8_t*)compressed, encodeBlkSize, encodeTotSize, BURST_SIZE);
+        loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i);
+        encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize);
+        StoreData((uint8_t*)compBlock, (uint8_t*)compressed, encodeBlkSize, encodeTotSize);
         encodeTotSize += encodeBlkSize;
     }
 
