@@ -84,6 +84,9 @@ mem_wt:
     for (int i = 0; i < encodeBlkSize; i++) {
         out[encodeTotSize + i] = in[i];
     }
+    for (int i = encodeBlkSize; i < BLOCK_SIZE; i++) {
+        out[encodeTotSize + i] = 0;
+    }
 }
 #endif
 
@@ -188,7 +191,7 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int32_t* info)
     for (int i = 0; i < iter; i++) {
         LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, BURST_SIZE, i);
         encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock);
-        StoreData((uint8_t*)origBlock, (uint8_t*)compressed, BLOCK_SIZE, encodeTotSize, BURST_SIZE);
+        StoreData((uint8_t*)compBlock, (uint8_t*)compressed, encodeBlkSize, encodeTotSize, BURST_SIZE);
         encodeTotSize += encodeBlkSize;
     }
 
