@@ -75,13 +75,14 @@ mem_rd:
     for (int i = 0; i < block_size; i++) {
         out[blockId*block_size + i] = in[i];
     }
+    //memcpy((void*)(out + blockId*block_size), (void*)in, block_size);
 }
 
 void StoreData(uint8_t* in, uint8_t* out, int encodeBlkSize, int encodeTotSize, int burst_size)
 {
 mem_wt:
-    for (int i = 0; i < BLOCK_SIZE; i++) {
-        out[i] = in[i];
+    for (int i = 0; i < encodeBlkSize; i++) {
+        out[encodeTotSize + i] = in[i];
     }
 }
 #endif
@@ -163,7 +164,7 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
 
 extern "C" {
 
-void rle(uint8_t* original, uint8_t* compressed, int size)
+void rle(uint8_t* original, uint8_t* compressed, int size, int32_t* info)
 {
 #if BURST
 #pragma HLS INTERFACE m_axi port = original bundle = gmem0 num_read_outstanding = 32 max_read_burst_length = 32 offset = slave
@@ -178,12 +179,6 @@ void rle(uint8_t* original, uint8_t* compressed, int size)
     uint8_t origBlock[BLOCK_SIZE];
     uint8_t compBlock[BLOCK_SIZE + 1];
 
-    for (int i = 0; i < BLOCK_SIZE; i++) {
-    #pragma HLS PIPELINE II = 1
-        origBlock[i] = 0;
-        compBlock[i] = 99;
-    } compBlock[BLOCK_SIZE] = 99;
-
     /* size in byte */
     int encodeBlkSize = 0;
     int encodeTotSize = 0;
@@ -192,10 +187,13 @@ void rle(uint8_t* original, uint8_t* compressed, int size)
     int iter = size/(BLOCK_SIZE);
     for (int i = 0; i < iter; i++) {
         LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, BURST_SIZE, i);
-        //encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock);
-        StoreData((uint8_t*)origBlock, (uint8_t*)compressed, encodeBlkSize, encodeTotSize, BURST_SIZE);
+        encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock);
+        StoreData((uint8_t*)compBlock, (uint8_t*)compressed, encodeBlkSize, encodeTotSize, BURST_SIZE);
         encodeTotSize += encodeBlkSize;
     }
+
+    /* update compression info */
+    info[0] = encodeTotSize;
 }
 
 }

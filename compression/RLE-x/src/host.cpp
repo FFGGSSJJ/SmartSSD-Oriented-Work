@@ -100,7 +100,7 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     OCL_CHECK(err, err = kernel.setArg(0, origData));
     OCL_CHECK(err, err = kernel.setArg(1, compData));
     OCL_CHECK(err, err = kernel.setArg(2, SIZE));
-    //OCL_CHECK(err, err = kernel.setArg(3, infoBuf));
+    OCL_CHECK(err, err = kernel.setArg(3, infoBuf));
 
     /* transfer to original data into FPGA */
     cout << "Trying to transfer Original Data from DRAM into FPGA\n";
@@ -139,16 +139,14 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     cout << "\nTrying to transfer Compressed Data from FPGA into DRAM\n";
     std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
     /* Transfer matrix C */
-    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({compData}, CL_MIGRATE_MEM_OBJECT_HOST));
+    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({compData, infoBuf}, CL_MIGRATE_MEM_OBJECT_HOST));
     cmdq.finish();
     std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
-
-    /* Transfer info buffer */
 
     /* Calculate the transfer time and bandwidth */
     cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
 
-    int compsize = 99;
+    int compsize = compinfo[0];
     size_str = xcl::convert_size(compsize);
     dnsduration = (double)Time2;
     dsduration = dnsduration / ((double)1000000);
@@ -157,9 +155,8 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
             << std::fixed << gbpersec << "GB/s\n";
 
     /* check the result */
-
     cout << "\n\nCompress Data: \n";
-    for (int i = 0; i < SIZE; i++) {
+    for (int i = 0; i < compsize; i++) {
         cout << compressed[i];
     }
 
