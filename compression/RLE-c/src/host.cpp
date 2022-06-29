@@ -85,12 +85,47 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
     return encodelen;
 }
 
+/* Decompression */
+static int decodeByteLevel(uint8_t* compData, uint8_t* decompData, int size)
+{
+    if (compData == NULL || decompData == NULL) return -1;
+
+    int32_t i = 0;
+    uint8_t run_count = 0;
+    int32_t decodelen = 0;
+
+    while (i < size) {
+        /* parse compressed data */
+        run_count = (uint8_t)compData[i++];
+
+        /* encode RLE packet */
+        if ((run_count&0x80) == 0x80) {
+            for (int j = 0; j < (run_count&0x7F); j++) 
+                decompData[decodelen + j] = compData[i];
+            decodelen += (int32_t)(run_count&0x7F);
+
+            /* update compData pointer */
+            i += 1;
+        }
+
+        /* literal RLE packet */
+        else {
+            for (int j = 0; j < (run_count&0x7F); j++, i++) 
+                decompData[decodelen + j] = compData[i];
+            decodelen += (int32_t)(run_count&0x7F);
+        }
+    }
+
+    return decodelen;
+}
+
 
 int main()
 {
     /* Allocate Data in DRAM */
     uint8_t* original = (uint8_t*)malloc((size_t)SIZE);
     uint8_t* compressed = (uint8_t*)malloc((size_t)SIZE);
+    uint8_t* decompressed = (uint8_t*)malloc((size_t)SIZE);
 
     /* Initialize matrix */
     for (int i = 0; i < SIZE; i++) {
@@ -110,4 +145,17 @@ int main()
     cout << "Compressed length: " << encodelen << endl;
     cout << "Compressed Data: \n";
     cout << (int)compressed[0];
+
+
+    int32_t decodelen = 0;
+    cout << "\n------------------------------------------------\n";
+    cout << "Perform RLE Decompression with unaligned DRAM\n";
+    cout << "-------------------------------------------------\n";
+    decodelen = decodeByteLevel(compressed, decompressed, encodelen);
+
+    cout << "Decompressed length: " << decodelen << endl;
+    cout << "Decompressed Data: \n";
+    cout << (int)decompressed[0];
+
+
 } 
