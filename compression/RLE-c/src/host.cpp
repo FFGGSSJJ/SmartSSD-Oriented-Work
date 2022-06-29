@@ -42,6 +42,7 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
         if (prev != curr) {
             /* if encoded run check previously */
             if ((count & 0x80) == 0x80) {
+                cout << "count:" << count << endl;
                 compData[encodelen++] = (++count);
                 compData[encodelen++] = prev;
                 count = 0;
