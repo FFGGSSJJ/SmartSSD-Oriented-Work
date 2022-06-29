@@ -145,7 +145,10 @@ int main()
 
     cout << "Compressed length: " << encodelen << endl;
     cout << "Compressed Data: \n";
-    cout << (int)compressed[0];
+    for (int i = 0; i < encodelen; i++) {
+        if (i%2 == 0) cout << (int)(compressed[i]&0x7F);
+        if (i%2 == 1) cout << compressed[i];
+    }
 
 
     int32_t decodelen = 0;
