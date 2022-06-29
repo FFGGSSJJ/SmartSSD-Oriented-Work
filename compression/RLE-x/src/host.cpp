@@ -55,14 +55,16 @@ void flush_cachelines(void* ptr)
 }
 
 /**
- * @brief compressed
+ * @brief 
  * 
  * @param context 
  * @param cmdq 
  * @param program 
+ * @param original 
+ * @param compressed 
  * @return int 
  */
-int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program)
+int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, uint8_t* original, uint8_t* compressed)
 {
     int err;
     cl::Kernel kernel;
@@ -70,20 +72,6 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
     /* Allocate space to store information of compression */
     int32_t* compinfo = (int32_t*)malloc(10*sizeof(int32_t));
     for (int i = 0; i < 10; i++)    compinfo[i] = 0;
-
-    /* Allocate Data in DRAM */
-    uint8_t* original = (uint8_t*)malloc((size_t)SIZE);
-    uint8_t* compressed = (uint8_t*)malloc((size_t)SIZE);
-
-    /* Initialize matrix */
-    for (int i = 0; i < SIZE; i++) {
-        original[i] = i > SIZE/2 ? 'a' : 'b';
-        compressed[i] = 0;
-    }
-
-    /* flush cache line */
-    flush_cachelines((void*)original);
-    flush_cachelines((void*)compressed);
 
 
     /* Allocate global buffers in the global memory of device*/
@@ -160,11 +148,108 @@ int dram_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program progra
         cout << compressed[i];
     }
 
-    /* Free allocated space */
-    free(original);
-    free(compressed);
+    /**/
+    free(compinfo);
 
     return EXIT_SUCCESS;
+}
+
+
+
+/**
+ * @brief 
+ * 
+ * @param context 
+ * @param cmdq 
+ * @param program 
+ * @param decompressed 
+ * @param compressed 
+ * @return int 
+ */
+int dram_decompress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, uint8_t* decompressed, uint8_t* compressed)
+{
+    int err;
+    cl::Kernel kernel;
+
+    /* Allocate space to store information of compression */
+    int32_t* compinfo = (int32_t*)malloc(10*sizeof(int32_t));
+    for (int i = 0; i < 10; i++)    compinfo[i] = 0;
+
+
+    /* Allocate global buffers in the global memory of device*/
+    std::cout << "Allocate global buffer in FPGA\n";
+    cl::Buffer decompData(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, (size_t)SIZE, (void*)decompressed, &err);
+    cl::Buffer compData(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, (size_t)SIZE, (void*)compressed, &err);
+    cl::Buffer infoBuf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, 5*sizeof(int32_t), (void*)compinfo, &err);
+
+    /* Initialize the kernels */
+    std::string krn_name = "rle_decomp";
+    OCL_CHECK(err, kernel = cl::Kernel(program, krn_name.c_str(), &err));
+
+    /* Set some args */
+    OCL_CHECK(err, err = kernel.setArg(0, compData));
+    OCL_CHECK(err, err = kernel.setArg(1, decompData));
+    OCL_CHECK(err, err = kernel.setArg(2, SIZE));
+    OCL_CHECK(err, err = kernel.setArg(3, infoBuf));
+
+    /* transfer to compressed data into FPGA */
+    cout << "Trying to transfer Compressed Data from DRAM into FPGA\n";
+    string size_str = xcl::convert_size(SIZE);
+
+    /* Transfer compressed data */
+    std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
+    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({compData}, 0 /* 0 means from host*/));
+    cmdq.finish();
+    std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
+
+     /* Calculate the transfer time and bandwidth */
+    cl_ulong Time = std::chrono::duration_cast<std::chrono::microseconds>(End1 - Start1).count();
+    double dnsduration = (double)Time;
+    double dsduration = dnsduration / ((double)1000000);
+    double gbpersec = (SIZE / dsduration) / ((double)1024 * 1024 * 1024);
+    std::cout << "Data Size = " << size_str << " Throughput = " << std::setprecision(2) << std::fixed << gbpersec << "GB/s\n";
+
+
+
+    /* Launch the kernels */
+    cout << "\nLaunch the RLE Decompression kernel" << endl;
+    std::chrono::high_resolution_clock::time_point decompress_start = std::chrono::high_resolution_clock::now();
+    OCL_CHECK(err, err = cmdq.enqueueTask(kernel));
+    cmdq.finish();
+    std::chrono::high_resolution_clock::time_point decompress_end = std::chrono::high_resolution_clock::now();
+
+
+    /* Calculate kernel launch time */
+    cl_ulong DecompressTime = std::chrono::duration_cast<std::chrono::microseconds>(decompress_end - decompress_start).count();
+    dnsduration = (double)DecompressTime;
+    dsduration = dnsduration / ((double)1000000);
+    cout << "Kernel execution time: " << dnsduration << "ns = " << dsduration << "s\n";
+
+    /* transfer to load the result into DRAM */
+    cout << "\nTrying to transfer Decompressed Data from FPGA into DRAM\n";
+    std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
+    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({decompData, infoBuf}, CL_MIGRATE_MEM_OBJECT_HOST));
+    cmdq.finish();
+    std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
+
+    /* Calculate the transfer time and bandwidth */
+    cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
+    int decompsize = compinfo[0];
+    size_str = xcl::convert_size(decompsize);
+    dnsduration = (double)Time2;
+    dsduration = dnsduration / ((double)1000000);
+    gbpersec = (decompsize / dsduration) / ((double)1024 * 1024 * 1024);
+    std::cout << "Decompressed Size = " << size_str << " Throughput = " << std::setprecision(2) << std::fixed << gbpersec << "GB/s\n";
+
+
+    /*  */
+    free(compinfo);
+    
+    /* check the result */
+    if (decompsize == SIZE) 
+        return EXIT_SUCCESS;
+    
+    return EXIT_FAILURE;
 }
 
 
@@ -272,14 +357,44 @@ int main(int argc, char** argv)
     //     }
     // }
 
-    /* Proceed for matrix multiplication */
+    /* Allocate Data in DRAM */
+    uint8_t* original = (uint8_t*)malloc((size_t)SIZE);
+    uint8_t* compressed = (uint8_t*)malloc((size_t)SIZE);
+    uint8_t* decompressed = (uint8_t*)malloc((size_t)SIZE);
+
+    /* Initialize matrix */
+    for (int i = 0; i < SIZE; i++) {
+        original[i] = i > SIZE/2 ? 'a' : 'b';
+        compressed[i] = 0;
+        decompressed[i] = 0;
+    }
+
+    /* flush cache line */
+    flush_cachelines((void*)original);
+    flush_cachelines((void*)compressed);
+    flush_cachelines((void*)decompressed);
+
+    /* Proceed RLE compression */
     cout << "\n------------------------------------------------\n";
     cout << "Perform RLE compression with unaligned DRAM\n";
     cout << "-------------------------------------------------\n";
-    if (EXIT_FAILURE == dram_compress(context, cmdq, program))
+    if (EXIT_FAILURE == dram_compress(context, cmdq, program, original, compressed))
+        cout << "TEST FAILED\n";
+    else
+        cout << "TEST PASSED\n";
+
+    /* Proceed RLE decompression */
+    cout << "\n------------------------------------------------\n";
+    cout << "Perform RLE decompression with unaligned DRAM\n";
+    cout << "-------------------------------------------------\n";
+    if (EXIT_FAILURE == dram_decompress(context, cmdq, program, decompressed, compressed))
         cout << "TEST FAILED\n";
     else
         cout << "TEST PASSED\n";
     
+    /* free allocated spaces */
+    free(original);
+    free(compressed);
+    free(decompressed);
     return EXIT_SUCCESS;    
 }
