@@ -139,7 +139,7 @@ int main()
         // if (i%4 == 0)   original[i] = 'a';
         // else if (i%4 == 1)  original[i] = 'b';
         // else                original[i] = 'd';
-        original[i] = 'b';
+        original[i] = i > SIZE/2 ? 'a' : 'b';
         compressed[i] = 0;
     }
 
