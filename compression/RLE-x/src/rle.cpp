@@ -97,7 +97,7 @@ mem_wt:
 
 
 /* Compression */
-static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
+static int encodeByteLevel(uint8_t* orgData, uint8_t* compData, int orgSize)
 {
     if (orgData == NULL || compData == NULL)    return -1;
 
@@ -107,7 +107,7 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
     uint32_t encodelen = 0;
     
     /* Byte-level run check */
-    for (int i = 1; i < BLOCK_SIZE; i++) {
+    for (int i = 1; i < orgSize; i++) {
     
         int8_t curr = orgData[i];
 
