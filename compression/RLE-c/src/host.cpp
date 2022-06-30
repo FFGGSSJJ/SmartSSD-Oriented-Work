@@ -109,7 +109,7 @@ static int decodeByteLevel(uint8_t* compData, uint8_t* decompData, int size)
         if ((run_count&0x80) == 0x80) {
             for (int j = 0; j <= (run_count&0x7F); j++) 
                 decompData[decodelen + j] = compData[i];
-            decodelen += (int32_t)(run_count&0x7F);
+            decodelen += (int32_t)(run_count&0x7F + 1);
 
             /* update compData pointer */
             i += 1;
