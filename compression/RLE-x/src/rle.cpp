@@ -97,7 +97,7 @@ mem_wt:
 
 
 /* Compression */
-static int encodeByteLevel(uint8_t* orgData, uint8_t* compData, int orgSize)
+static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
 {
     if (orgData == NULL || compData == NULL)    return -1;
 
@@ -107,16 +107,21 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData, int orgSize)
     uint32_t encodelen = 0;
     
     /* Byte-level run check */
-    for (int i = 1; i < orgSize; i++) {
+    for (int i = 1; i < BLOCK_SIZE; i++) {
     
         int8_t curr = orgData[i];
 
         /* if run count has reached 127 */
         if ((count & 0x7F) >= 0x7F) {
-            compData[encodelen++] = count;
-            compData[encodelen++] = prev;
-            count &= 0x80;      /* maintain the previous run prefix while clear the count */
-            prev = curr;
+            if ((count & 0x80) == 0x80) {
+                compData[encodelen++] = count;
+                compData[encodelen++] = prev;
+                count &= 0x80;      /* maintain the previous run prefix while clear the count */
+                prev = curr;
+            } else {
+                count = 0;
+                prev = curr;
+            }
             continue;
         }
 
@@ -124,7 +129,7 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData, int orgSize)
         if (prev != curr) {
             /* if encoded run check previously */
             if ((count & 0x80) == 0x80) {
-                compData[encodelen++] = (++count);
+                compData[encodelen++] = count;
                 compData[encodelen++] = prev;
                 count = 0;
                 prev = curr;
@@ -151,9 +156,18 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData, int orgSize)
         }
     }
 
+    /* if run count has reached 127 */
+    if ((count & 0x7F) >= 0x7F) {
+        if ((count & 0x80) == 0x80) {
+            compData[encodelen++] = count;
+            compData[encodelen++] = prev;
+        } else 
+            count = 0;
+    }
+
     /* if encoded run check */
     if ((count & 0x80) == 0x80) {
-        compData[encodelen++] = (++count);
+        compData[encodelen++] = count;
         compData[encodelen++] = prev;
     }
     /* if literal run check */
