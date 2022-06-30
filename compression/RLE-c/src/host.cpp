@@ -31,10 +31,15 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
 
         /* if run count has reached 127 */
         if ((count & 0x7F) >= 0x7F) {
-            compData[encodelen++] = count;
-            compData[encodelen++] = prev;
-            count &= 0x80;      /* maintain the previous run prefix while clear the count */
-            prev = curr;
+            if ((count & 0x80) == 0x80) {
+                compData[encodelen++] = count;
+                compData[encodelen++] = prev;
+                count &= 0x80;      /* maintain the previous run prefix while clear the count */
+                prev = curr;
+            } else {
+                count = 0;
+                prev = curr;
+            }
             continue;
         }
 
@@ -43,7 +48,7 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
             /* if encoded run check previously */
             if ((count & 0x80) == 0x80) {
                 cout << "count:" << (int)(count & 0x7F) << endl;
-                compData[encodelen++] = (++count);
+                compData[encodelen++] = count;
                 compData[encodelen++] = prev;
                 count = 0;
                 prev = curr;
@@ -73,7 +78,7 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData)
     /* if encoded run check */
     if ((count & 0x80) == 0x80) {
         cout << "count1:" << (int)(count & 0x7F) << endl;
-        compData[encodelen++] = (++count);
+        compData[encodelen++] = count;
         compData[encodelen++] = prev;
     }
     /* if literal run check */
@@ -102,7 +107,7 @@ static int decodeByteLevel(uint8_t* compData, uint8_t* decompData, int size)
 
         /* encode RLE packet */
         if ((run_count&0x80) == 0x80) {
-            for (int j = 0; j < (run_count&0x7F); j++) 
+            for (int j = 0; j <= (run_count&0x7F); j++) 
                 decompData[decodelen + j] = compData[i];
             decodelen += (int32_t)(run_count&0x7F);
 
