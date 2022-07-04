@@ -28,20 +28,15 @@ using std::string;
 using std::endl;
 
 /* Macros */
-#define ALIGNMENT   64
-#define ROW         1024
-#define COL         1024
-#define BytesPerNum 8
-#define BytesPerKB  1024
-#define BytesPerMB  1024*1024
-#define BytesPerGB  1024*1024*1024
-#define MAX_SIZE    2*BytesPerGB // 2GB
+uint64_t BytesPerKB =  1024
+uint64_t BytesPerMB =  1024*1024
+uint64_t BytesPerGB =  1024*1024*1024
+size_t MAX_SIZE =      2*BytesPerGB // 2GB
 
 /* Global var for buffer size */
 size_t max_buffer = 16 * 1024 * 1024;   // 16MB
 size_t mid_buffer = 2 * 1024 * 1024;    // 2MB
 size_t min_buffer = 4 * 1024;           // 4KB
-size_t max_size = 128 * 1024 * 1024; // 128MB
 
                                                          
 void flush_cachelines(void* ptr)
@@ -302,7 +297,7 @@ int main(int argc, char** argv)
     // Switches
     //**************//"<Full Arg>",  "<Short Arg>", "<Description>", "<Default>"
     parser.addSwitch("--xclbin_file", "-x", "input binary file string", "");
-    parser.addSwitch("--direction", "-d", "1 for compression or 0 for decompression", "0")
+    parser.addSwitch("--direction", "-d", "1 for compression or 0 for decompression", "1");
     parser.addSwitch("--file_path", "-p", "file path string", "");
     parser.addSwitch("--file_size_kb", "-k", "file size in KB", "");
     parser.addSwitch("--file_size_mb", "-m", "file size in MB", "");
