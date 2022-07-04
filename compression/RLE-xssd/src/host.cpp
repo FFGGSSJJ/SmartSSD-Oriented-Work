@@ -28,28 +28,15 @@ using std::string;
 using std::endl;
 
 /* Macros */
-uint64_t BytesPerKB =  1024
-uint64_t BytesPerMB =  1024*1024
-uint64_t BytesPerGB =  1024*1024*1024
-size_t MAX_SIZE =      2*BytesPerGB // 2GB
+uint64_t BytesPerKB =  1024;
+uint64_t BytesPerMB =  1024*1024;
+uint64_t BytesPerGB =  1024*1024*1024;
+size_t MAX_SIZE =      2*BytesPerGB;    // 2GB
 
 /* Global var for buffer size */
 size_t max_buffer = 16 * 1024 * 1024;   // 16MB
 size_t mid_buffer = 2 * 1024 * 1024;    // 2MB
 size_t min_buffer = 4 * 1024;           // 4KB
-
-                                                         
-void flush_cachelines(void* ptr)
-{
-    const int LINESIZE = 64;
-    const char* p = (const char*)ptr;
-    uintptr_t endline = ((uintptr_t)ptr + MAX_SIZE - 1) | (LINESIZE-1);
-
-    do {   // flush while p is in a cache line that contains any of the struct
-         _mm_clflush(p);
-          p += LINESIZE;
-    } while(p <= (const char*)endline);
-}
 
 /**
  * @brief 
