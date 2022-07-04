@@ -138,15 +138,15 @@ int main()
 {
     /* Allocate Data in DRAM */
     uint8_t* original = (uint8_t*)malloc((size_t)SIZE);
-    uint8_t* compressed = (uint8_t*)malloc((size_t)SIZE);
+    uint8_t* compressed = (uint8_t*)malloc((size_t)SIZE*2);
     uint8_t* decompressed = (uint8_t*)malloc((size_t)SIZE);
 
     /* Initialize matrix */
     for (int i = 0; i < SIZE; i++) {
-        // if (i%4 == 0)   original[i] = 'a';
-        // else if (i%4 == 1)  original[i] = 'b';
-        // else                original[i] = 'd';
-        original[i] = i > SIZE/2 ? 'a' : 'b';
+        if (i%4 == 0)   original[i] = 'a';
+        else if (i%4 == 1)  original[i] = 'b';
+        else                original[i] = 'd';
+        //original[i] = i > SIZE/2 ? 'a' : 'b';
         compressed[i] = 0;
     }
 
@@ -159,10 +159,11 @@ int main()
 
     cout << "Compressed length: " << encodelen << endl;
     cout << "Compressed Data: \n";
-    for (int i = 0; i < encodelen; i++) {
-        if (i%2 == 0) cout << (int)(compressed[i]&0x7F);
-        if (i%2 == 1) cout << compressed[i];
-    }
+    // for (int i = 0; i < encodelen; i++) {
+    //     if (i%5 == 0 || i%5 == 3) cout << (int)(compressed[i]&0x7F);
+    //     if (i%5 == 1 || i%5 == 2 || i%5 == 4) cout << compressed[i];
+
+    // }
 
 
     int32_t decodelen = 0;
@@ -173,7 +174,8 @@ int main()
 
     cout << "Decompressed length: " << decodelen << endl;
     cout << "Decompressed Data: \n";
-    cout << (int)decompressed[0];
+    // for (int i = 0; i < BLOCK_SIZE; i++)
+    //     cout << decompressed[i];
 
 
 } 
