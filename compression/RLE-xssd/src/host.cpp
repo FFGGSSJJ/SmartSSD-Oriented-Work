@@ -28,9 +28,9 @@ using std::string;
 using std::endl;
 
 /* Macros */
-uint64_t BytesPerKB =  1024;
-uint64_t BytesPerMB =  1024*1024;
-uint64_t BytesPerGB =  1024*1024*1024;
+int64_t BytesPerKB =  1024;
+int64_t BytesPerMB =  1024*1024;
+int64_t BytesPerGB =  1024*1024*1024;
 size_t MAX_SIZE =      2*BytesPerGB;    // 2GB
 
 /* Global var for buffer size */
