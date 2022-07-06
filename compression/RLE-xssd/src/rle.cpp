@@ -77,7 +77,6 @@ mem_rd:
         out[blockId*block_size + i] = in[i];
     }
     return size2read;
-    //memcpy((void*)(out + blockId*block_size), (void*)in, block_size);
 }
 
 void StoreData(uint8_t* in, uint8_t* out, int encodeBlkSize, int encodeTotSize)

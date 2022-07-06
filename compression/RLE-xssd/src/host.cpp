@@ -61,8 +61,8 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     outExt = {XCL_MEM_EXT_P2P_BUFFER, nullptr, 0};
     /* Allocate global buffers in the global memory of device*/
     std::cout << "Allocate global buffer in FPGA\n";
-    cl::Buffer origData(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, (size_t)MAX_SIZE, &outExt, &err);
-    cl::Buffer compData(context, CL_MEM_WRITE_ONLY | CL_MEM_EXT_PTR_XILINX, (size_t)MAX_SIZE, &outExt, &err);
+    cl::Buffer origData(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, (size_t)filesize, &outExt, &err);
+    cl::Buffer compData(context, CL_MEM_WRITE_ONLY | CL_MEM_EXT_PTR_XILINX, (size_t)filesize, &outExt, &err);
     cl::Buffer infoBuf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, 5*sizeof(int32_t), (void*)compinfo, &err);
 
     /* Map p2p buffers */
@@ -189,88 +189,124 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
  */
 int ssd_decompress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int& nvmeFd, int filesize)
 {
-    // int err;
-    // cl::Kernel kernel;
+    int err;
+    cl::Kernel kernel;
 
-    // /* Allocate space to store information of compression */
-    // int32_t* compinfo = (int32_t*)malloc(10*sizeof(int32_t));
-    // for (int i = 0; i < 10; i++)    compinfo[i] = 0;
+    /* Allocate space to store information of compression */
+    int32_t* compinfo = (int32_t*)malloc(10*sizeof(int32_t));
+    for (int i = 0; i < 10; i++)    compinfo[i] = 0;
 
+    cl_mem_ext_ptr_t outExt;
+    outExt = {XCL_MEM_EXT_P2P_BUFFER, nullptr, 0};
+    /* Allocate global buffers in the global memory of device*/
+    std::cout << "Allocate global buffer in FPGA\n";
+    cl::Buffer decompData(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, (size_t)MAX_SIZE, &outExt, &err);
+    cl::Buffer compData(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, (size_t)filesize, &outExt, &err);
+    cl::Buffer infoBuf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, 5*sizeof(int32_t), (void*)compinfo, &err);
 
-    // /* Allocate global buffers in the global memory of device*/
-    // std::cout << "Allocate global buffer in FPGA\n";
-    // cl::Buffer decompData(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, (size_t)MAX_SIZE, (void*)decompressed, &err);
-    // cl::Buffer compData(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, (size_t)MAX_SIZE, (void*)compressed, &err);
-    // cl::Buffer infoBuf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, 5*sizeof(int32_t), (void*)compinfo, &err);
+    /* Map p2p buffers */
+    std::cout << "\nMap P2P device buffers to host access pointers\n" << std::endl;
+    void* decompressed = cmdq.enqueueMapBuffer( decompData,
+                                            CL_TRUE,                    // blocking call
+                                            CL_MAP_WRITE | CL_MAP_READ, // Indicates we will be writing
+                                            0,                          // buffer offset
+                                            MAX_SIZE,                   // size in bytes
+                                            nullptr, nullptr,
+                                            &err); // error code
+    void* compressed = cmdq.enqueueMapBuffer( compData,
+                                            CL_TRUE,                    // blocking call
+                                            CL_MAP_WRITE | CL_MAP_READ, // Indicates we will be writing
+                                            0,                          // buffer offset
+                                            filesize,                   // size in bytes
+                                            nullptr, nullptr,
+                                            &err); // error code
+    cmdq.finish();
 
-    // /* Initialize the kernels */
-    // std::string krn_name = "rle_decomp";
-    // OCL_CHECK(err, kernel = cl::Kernel(program, krn_name.c_str(), &err));
+    /* Initialize the kernels */
+    std::string krn_name = "rle_decomp";
+    OCL_CHECK(err, kernel = cl::Kernel(program, krn_name.c_str(), &err));
 
-    // /* Set some args */
-    // OCL_CHECK(err, err = kernel.setArg(0, compData));
-    // OCL_CHECK(err, err = kernel.setArg(1, decompData));
-    // OCL_CHECK(err, err = kernel.setArg(2, MAX_SIZE));
-    // OCL_CHECK(err, err = kernel.setArg(3, infoBuf));
+    /* Set some args */
+    OCL_CHECK(err, err = kernel.setArg(0, compData));
+    OCL_CHECK(err, err = kernel.setArg(1, decompData));
+    OCL_CHECK(err, err = kernel.setArg(2, filesize));
+    OCL_CHECK(err, err = kernel.setArg(3, infoBuf));
 
-    // /* transfer to compressed data into FPGA */
-    // cout << "Trying to transfer Compressed Data from DRAM into FPGA\n";
-    // string size_str = xcl::convert_size(MAX_SIZE);
-
-    // /* Transfer compressed data */
-    // std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
-    // OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({compData}, 0 /* 0 means from host*/));
-    // cmdq.finish();
-    // std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
-
-    //  /* Calculate the transfer time and bandwidth */
-    // cl_ulong Time = std::chrono::duration_cast<std::chrono::microseconds>(End1 - Start1).count();
-    // double dnsduration = (double)Time;
-    // double dsduration = dnsduration / ((double)1000000);
-    // double gbpersec = (MAX_SIZE / dsduration) / ((double)1024 * 1024 * 1024);
-    // std::cout << "Data Size = " << size_str << " Throughput = " << std::setprecision(2) << std::fixed << gbpersec << "GB/s\n";
-
-
-
-    // /* Launch the kernels */
-    // cout << "\nLaunch the RLE Decompression kernel" << endl;
-    // std::chrono::high_resolution_clock::time_point decompress_start = std::chrono::high_resolution_clock::now();
-    // OCL_CHECK(err, err = cmdq.enqueueTask(kernel));
-    // cmdq.finish();
-    // std::chrono::high_resolution_clock::time_point decompress_end = std::chrono::high_resolution_clock::now();
-
-
-    // /* Calculate kernel launch time */
-    // cl_ulong DecompressTime = std::chrono::duration_cast<std::chrono::microseconds>(decompress_end - decompress_start).count();
-    // dnsduration = (double)DecompressTime;
-    // dsduration = dnsduration / ((double)1000000);
-    // cout << "Kernel execution time: " << dnsduration << "ns = " << dsduration << "s\n";
-
-    // /* transfer to load the result into DRAM */
-    // cout << "\nTrying to transfer Decompressed Data from FPGA into DRAM\n";
-    // std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
-    // OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({decompData, infoBuf}, CL_MIGRATE_MEM_OBJECT_HOST));
-    // cmdq.finish();
-    // std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
-
-    // /* Calculate the transfer time and bandwidth */
-    // cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
-    // int decompsize = compinfo[0];
-    // size_str = xcl::convert_size(decompsize);
-    // dnsduration = (double)Time2;
-    // dsduration = dnsduration / ((double)1000000);
-    // gbpersec = (decompsize / dsduration) / ((double)1024 * 1024 * 1024);
-    // std::cout << "Decompressed Size = " << size_str << " Throughput = " << std::setprecision(2) << std::fixed << gbpersec << "GB/s\n";
+    /* transfer to original data into FPGA */
+    cout << "Start P2P to transfer Original Data from SSD into FPGA\n";
+    /* Transfer compressed data */
+    size_t bufsize = 256 * BytesPerMB < filesize ? 256 * BytesPerMB : filesize;
+    int iter = ceil(filesize/(int)bufsize);
+    int ret = 0;
+    uint64_t offset = 0;
+    std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < iter; i++) {
+        ret = pread(nvmeFd, (void*)compressed, bufsize, offset);
+        offset += (uint64_t)bufsize;
+        if (ret == -1) {
+            cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << endl;
+            return EXIT_FAILURE;
+        }
+    }
+    std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
 
 
-    // /*  */
-    // free(compinfo);
+     /* Calculate the transfer time and bandwidth */
+    cl_ulong Time = std::chrono::duration_cast<std::chrono::microseconds>(End1 - Start1).count();
+    double dnsduration = (double)Time;
+    double dsduration = dnsduration / ((double)1000000);
+    double gbpersec = (filesize / dsduration) / ((double)1024 * 1024 * 1024);
+    string size_str = xcl::convert_size(filesize);
+    std::cout << "Data Size = " << size_str << " Throughput = " << std::setprecision(2) << std::fixed << gbpersec << "GB/s\n";
+
+
+    /* Launch the kernels */
+    cout << "\nLaunch the RLE Decompression kernel" << endl;
+    std::chrono::high_resolution_clock::time_point decompress_start = std::chrono::high_resolution_clock::now();
+    OCL_CHECK(err, err = cmdq.enqueueTask(kernel));
+    cmdq.finish();
+    std::chrono::high_resolution_clock::time_point decompress_end = std::chrono::high_resolution_clock::now();
+
+
+    /* Calculate kernel launch time */
+    cl_ulong DecompressTime = std::chrono::duration_cast<std::chrono::microseconds>(decompress_end - decompress_start).count();
+    dnsduration = (double)DecompressTime;
+    dsduration = dnsduration / ((double)1000000);
+    cout << "Kernel execution time: " << dnsduration << "ns = " << dsduration << "s\n";
+
+    /* Transfer information buffer */
+    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({infoBuf}, CL_MIGRATE_MEM_OBJECT_HOST));
+    cmdq.finish();
+
+    /* P2P transfer to load the result into SSD */
+    int decompsize = compinfo[0];
+    bufsize = 512 * BytesPerMB < decompsize ? 512 * BytesPerMB : decompsize;
+    iter = ceil(decompsize/(int)bufsize);
+    offset = 0;
+    cout << "\nTrying to transfer Decompressed Data from FPGA into SSD\n";
+    std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < iter; i++) {
+        ret = pwrite(nvmeFd, (void*)decompressed, bufsize, offset);
+        offset += bufsize;
+        if (ret == -1) {
+            cout << "P2P: write() failed, err: " << ret << ", line: " << __LINE__ << endl;
+            return EXIT_FAILURE;
+        }
+    }
+    std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
+
+    /* Calculate the transfer time and bandwidth */
+    cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
+    dnsduration = (double)Time2;
+    dsduration = dnsduration / ((double)1000000);
+    gbpersec = (decompsize / dsduration) / ((double)1024 * 1024 * 1024);
+    size_str = xcl::convert_size(decompsize);
+    std::cout << "Decompressed Size = " << size_str << " Throughput = " << std::setprecision(2) << std::fixed << gbpersec << "GB/s\n";
+
+    /*  */
+    free(compinfo);
     
-    // /* check the result */
-    // if (decompsize == MAX_SIZE) 
-    //     return EXIT_SUCCESS;
-    
-    return EXIT_FAILURE;
+    return EXIT_SUCCESS;
 }
 
 
@@ -284,31 +320,40 @@ int main(int argc, char** argv)
     // Switches
     //**************//"<Full Arg>",  "<Short Arg>", "<Description>", "<Default>"
     parser.addSwitch("--xclbin_file", "-x", "input binary file string", "");
-    parser.addSwitch("--direction", "-d", "1 for compression or 0 for decompression", "1");
+    parser.addSwitch("--direction", "-c", "1 for compression or 0 for decompression", "1");
     parser.addSwitch("--file_path", "-p", "file path string", "");
-    parser.addSwitch("--file_size_kb", "-k", "file size in KB", "");
-    parser.addSwitch("--file_size_mb", "-m", "file size in MB", "");
+    parser.addSwitch("--file_size_b", "-b", "file size in B", "0");
+    parser.addSwitch("--file_size_kb", "-k", "file size in KB", "0");
+    parser.addSwitch("--file_size_mb", "-m", "file size in MB", "0");
     parser.addSwitch("--input_file", "-f", "input file string", "");
     parser.addSwitch("--device", "-d", "device id", "0");
     parser.parse(argc, argv);
+    if (argc < 9) {
+        parser.printHelp();
+        return EXIT_FAILURE;
+    }
 
     // Read settings
     auto binaryFile = parser.value("xclbin_file");
     string filepath = parser.value("file_path");
     string dev_id = parser.value("device");
+    int64_t file_size_b = stoi(parser.value("file_size_b"));
     int64_t file_size_kb = stoi(parser.value("file_size_kb"));
     int64_t file_size_mb = stoi(parser.value("file_size_mb"));
-    int64_t file_size_byte = file_size_kb > 1024*file_size_mb ? BytesPerKB*file_size_kb : BytesPerMB*file_size_mb;
+    file_size_kb = file_size_b > file_size_kb*BytesPerKB ? file_size_b : file_size_kb*BytesPerKB;
+    int64_t file_size_byte = file_size_kb > BytesPerMB*file_size_mb ? file_size_kb : BytesPerMB*file_size_mb;
     int8_t compFlag = stoi(parser.value("direction"));
-    
-    if (argc < 9) {
-        parser.printHelp();
-        return EXIT_FAILURE;
-    }
+
     if (filepath.empty()) {
         cout << "Please specify the file to be compressed\n";
         return EXIT_FAILURE;
     }
+    if (file_size_kb == 0 && file_size_mb == 0 && file_size_b == 0) {
+        cout << "Please specify the file size\n";
+        return EXIT_FAILURE;
+    }
+    if (file_size_kb != file_size_mb*1024) 
+        cout << "As both B, KB and MB are specified, the largest one will be used.\n";
 
     /* set kernel environment */
     cl_int err;
@@ -319,7 +364,6 @@ int main(int argc, char** argv)
     /* *************************** */
     /* OPENCL HOST CODE AREA START */
     /* *************************** */
-
     /* initialize device settings */
     /* get_xil_devices() is a utility API which will find the xilinx
        platforms and will return list of devices connected to Xilinx platform */
