@@ -48,9 +48,10 @@ size_t min_buffer = 4 * 1024;           // 4KB
  * @param compressed 
  * @return int 
  */
-int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int& nvmeFd, int filesize)
+int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, string filepath, int filesize)
 {
     int err;
+    int nvmeFd = -1;
     cl::Kernel kernel;
 
     /* Allocate space to store information of compression */
@@ -95,12 +96,20 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     OCL_CHECK(err, err = kernel.setArg(3, infoBuf));
 
     /* transfer to original data into FPGA */
-    cout << "Start P2P to transfer Original Data from SSD into FPGA\n";
-    /* Transfer original data */
     size_t bufsize = 512 * BytesPerMB < filesize ? 512 * BytesPerMB : filesize;
     int iter = ceil(filesize/(int)bufsize);
     int ret = 0;
     uint64_t offset = 0;
+
+    cout << "Start P2P to transfer Original Data from SSD into FPGA\n";
+    cout << "Original Size: " << xcl::convert_size(filesize) << "Bufsize: " << xcl::convert_size(bufsize) << endl;
+    nvmeFd = open(filepath.c_str(), O_RDWR | O_DIRECT);
+    if (nvmeFd < 0) {
+        cout << "Open Failed\n";
+        return EXIT_FAILURE;
+    } cout << "INFO: Successfully opened NVME SSD for read()" << filepath << endl;
+
+    /* Transfer original data */
     std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iter; i++) {
         ret = pread(nvmeFd, (void*)original, bufsize, offset);
@@ -111,6 +120,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
         }
     }
     std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
+    (void)close(nvmeFd);
 
 
     /* Calculate the transfer time and bandwidth */
@@ -144,7 +154,15 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     bufsize = 256 * BytesPerMB < compsize ? 256 * BytesPerMB : compsize;
     iter = ceil(compsize/(int)bufsize);
     offset = 0;
-    cout << "\nTrying to transfer Compressed Data from FPGA into SSD\n";
+
+    cout << "\nStart P2P to transfer Compressed Data from FPGA into SSD\n";
+    cout << "Compressed Size = " << xcl::convert_size(compsize) << "Bufsize: " << xcl::convert_size(bufsize) << endl;
+    nvmeFd = open(filepath.c_str(), O_RDWR | O_DIRECT);
+    if (nvmeFd < 0) {
+        cout << "Open Failed\n";
+        return EXIT_FAILURE;
+    } cout << "INFO: Successfully opened NVME SSD for read()" << filepath << endl;
+
     std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iter; i++) {
         ret = pwrite(nvmeFd, (void*)compressed, bufsize, offset);
@@ -155,6 +173,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
         }
     }
     std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
+    (void)close(nvmeFd);
 
     /* Calculate the transfer time and bandwidth */
     cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
@@ -187,7 +206,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
  * @param compressed 
  * @return int 
  */
-int ssd_decompress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, int& nvmeFd, int filesize)
+int ssd_decompress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, string filepath, int filesize)
 {
     int err;
     cl::Kernel kernel;
@@ -415,19 +434,12 @@ int main(int argc, char** argv)
     } else
         cout << "Device[" << dev_id << "]: program successful!\n";
 
-    int nvmeFd = open(filepath.c_str(), O_RDWR | O_DIRECT);
-    if (nvmeFd < 0) {
-        cout << "Open Failed\n";
-        return EXIT_FAILURE;
-    } cout << "INFO: Successfully opened NVME SSD " << filepath << endl;
-    
-
     if (compFlag == 1) {
         /* Proceed RLE compression */
         cout << "\n------------------------------------------------\n";
         cout << "Perform RLE compression with unaligned DRAM\n";
         cout << "-------------------------------------------------\n";
-        if (EXIT_FAILURE == ssd_compress(context, cmdq, program, nvmeFd, file_size_byte))
+        if (EXIT_FAILURE == ssd_compress(context, cmdq, program, filepath, file_size_byte))
             cout << "TEST FAILED\n";
         else
             cout << "TEST PASSED\n";
@@ -436,7 +448,7 @@ int main(int argc, char** argv)
         cout << "\n------------------------------------------------\n";
         cout << "Perform RLE decompression with unaligned DRAM\n";
         cout << "-------------------------------------------------\n";
-        if (EXIT_FAILURE == ssd_decompress(context, cmdq, program, nvmeFd, file_size_byte))
+        if (EXIT_FAILURE == ssd_decompress(context, cmdq, program, filepath, file_size_byte))
             cout << "TEST FAILED\n";
         else
             cout << "TEST PASSED\n";
