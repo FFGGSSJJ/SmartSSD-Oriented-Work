@@ -84,10 +84,6 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
                                             &err); // error code
     cmdq.finish();
 
-    for (int i = 0; i < filesize/sizeof(int32_t); i++)
-        ((int32_t*)compressed)[i] = (int32_t)0;
-
-
     /* Initialize the kernels */
     std::string krn_name = "rle";
     OCL_CHECK(err, kernel = cl::Kernel(program, krn_name.c_str(), &err));
@@ -158,6 +154,11 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     iter = ceil(compsize/(int)bufsize);
     offset = 0;
 
+    /* check the result */
+    cout << "\n\nCompress Data: \n";
+    for (int i = 0; i < compsize; i++)
+        cout << ((uint8_t*)compressed)[i];
+
     cout << "\nStart P2P to transfer Compressed Data from FPGA into SSD\n";
     cout << "Compressed Size = " << xcl::convert_size(compsize) << "Bufsize: " << xcl::convert_size(bufsize) << endl;
     nvmeFd = open(filepath.c_str(), O_RDWR | O_DIRECT);
@@ -185,11 +186,6 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     dsduration = dnsduration / ((double)1000000);
     gbpersec = (compsize / dsduration) / ((double)1024 * 1024 * 1024);
     std::cout << "Compressed Size = " << size_str << " Throughput = " << std::setprecision(2) << std::fixed << gbpersec << "GB/s\n";
-
-    /* check the result */
-    cout << "\n\nCompress Data: \n";
-    for (int i = 0; i < compsize; i++)
-        cout << ((uint8_t*)compressed)[i];
 
     /**/
     free(compinfo);
