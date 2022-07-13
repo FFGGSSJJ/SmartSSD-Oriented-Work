@@ -209,6 +209,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
 int ssd_decompress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, string filepath, int filesize)
 {
     int err;
+    int nvmeFd = -1;
     cl::Kernel kernel;
 
     /* Allocate space to store information of compression */
