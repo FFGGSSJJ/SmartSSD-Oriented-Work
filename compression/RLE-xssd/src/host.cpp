@@ -77,12 +77,15 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
                                             &err); // error code
     void* compressed = cmdq.enqueueMapBuffer( compData,
                                             CL_TRUE,                    // blocking call
-                                            CL_MAP_WRITE | CL_MAP_READ, // Indicates we will be writing
+                                            CL_MAP_READ | CL_MAP_WRITE, // Indicates we will be writing
                                             0,                          // buffer offset
                                             filesize,                   // size in bytes
                                             nullptr, nullptr,
                                             &err); // error code
     cmdq.finish();
+
+    for (int i = 0; i < filesize/sizeof(int32_t); i++)
+        ((int32_t*)compressed)[i] = (int32_t)0;
 
 
     /* Initialize the kernels */
@@ -102,12 +105,12 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     uint64_t offset = 0;
 
     cout << "Start P2P to transfer Original Data from SSD into FPGA\n";
-    cout << "Original Size: " << xcl::convert_size(filesize) << "Bufsize: " << xcl::convert_size(bufsize) << endl;
+    cout << "Original Size: " << xcl::convert_size(filesize) << " Bufsize: " << xcl::convert_size(bufsize) << endl;
     nvmeFd = open(filepath.c_str(), O_RDWR | O_DIRECT);
     if (nvmeFd < 0) {
         cout << "Open Failed\n";
         return EXIT_FAILURE;
-    } cout << "INFO: Successfully opened NVME SSD for read()" << filepath << endl;
+    } cout << "INFO: Successfully opened NVME SSD for read(): " << filepath << endl;
 
     /* Transfer original data */
     std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
@@ -161,7 +164,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     if (nvmeFd < 0) {
         cout << "Open Failed\n";
         return EXIT_FAILURE;
-    } cout << "INFO: Successfully opened NVME SSD for read()" << filepath << endl;
+    } cout << "INFO: Successfully opened NVME SSD for write(): " << filepath << endl;
 
     std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iter; i++) {
@@ -348,7 +351,7 @@ int main(int argc, char** argv)
     parser.addSwitch("--input_file", "-f", "input file string", "");
     parser.addSwitch("--device", "-d", "device id", "0");
     parser.parse(argc, argv);
-    if (argc < 9) {
+    if (argc < 7) {
         parser.printHelp();
         return EXIT_FAILURE;
     }
@@ -372,7 +375,7 @@ int main(int argc, char** argv)
         cout << "Please specify the file size\n";
         return EXIT_FAILURE;
     }
-    if (file_size_kb != file_size_mb*1024) 
+    if (file_size_kb != 0 && file_size_kb != file_size_mb*1024) 
         cout << "As both B, KB and MB are specified, the largest one will be used.\n";
 
     /* set kernel environment */
