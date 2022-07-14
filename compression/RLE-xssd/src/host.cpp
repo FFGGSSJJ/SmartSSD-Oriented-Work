@@ -82,7 +82,7 @@ void p2p_ssd_to_host(int& nvmeFd,
         std::cout << "\n------------------------------------------\n";
         std::cout << "   Data Size: " << datasize << "B";
         std::cout << "\n------------------------------------------\n";
-        for (bufsize = 4; bufsize <= 4; bufsize *= 2) {
+        for (bufsize = 4 * BytesPerKB; bufsize <= 4 * BytesPerKB; bufsize *= 2) {
             std::string size_str = xcl::convert_size(bufsize);
 
             int iter = datasize / bufsize;
