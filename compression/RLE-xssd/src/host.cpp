@@ -85,7 +85,7 @@ void p2p_ssd_to_host(int& nvmeFd,
         for (bufsize = 4 * BytesPerKB; bufsize <= 4 * BytesPerKB; bufsize *= 2) {
             std::string size_str = xcl::convert_size(bufsize);
 
-            int iter = datasize / bufsize;
+            int iter = datasize / bufsize + 1;
             if (xcl::is_emulation()) 
                 iter = 2; // Reducing iteration to run faster in emulation flow.
             
