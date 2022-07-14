@@ -48,7 +48,7 @@ size_t min_buffer = 4 * 1024;           // 4KB
  * @param compressed 
  * @return int 
  */
-int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, string filepath, int filesize)
+int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, string filepath, string respath, int filesize)
 {
     int err;
     int nvmeFd = -1;
@@ -115,6 +115,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
         offset += (uint64_t)bufsize;
         if (ret == -1) {
             cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << endl;
+            (void)close(nvmeFd);
             return EXIT_FAILURE;
         }
     }
@@ -161,11 +162,11 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
 
     cout << "\nStart P2P to transfer Compressed Data from FPGA into SSD\n";
     cout << "Compressed Size = " << xcl::convert_size(compsize) << "Bufsize: " << xcl::convert_size(bufsize) << endl;
-    nvmeFd = open(filepath.c_str(), O_RDWR | O_DIRECT);
+    nvmeFd = open(respath.c_str(), O_RDWR | O_DIRECT);
     if (nvmeFd < 0) {
         cout << "Open Failed\n";
         return EXIT_FAILURE;
-    } cout << "INFO: Successfully opened NVME SSD for write(): " << filepath << endl;
+    } cout << "INFO: Successfully opened NVME SSD for write(): " << respath << endl;
 
     std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iter; i++) {
@@ -173,6 +174,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
         offset += bufsize;
         if (ret == -1) {
             cout << "P2P: write() failed, err: " << ret << ", line: " << __LINE__ << endl;
+            (void)close(nvmeFd);
             return EXIT_FAILURE;
         }
     }
@@ -341,13 +343,13 @@ int main(int argc, char** argv)
     parser.addSwitch("--xclbin_file", "-x", "input binary file string", "");
     parser.addSwitch("--direction", "-c", "1 for compression or 0 for decompression", "1");
     parser.addSwitch("--file_path", "-p", "file path string", "");
+    parser.addSwitch("--result_path", "-r", "file path to compressed result", "");
     parser.addSwitch("--file_size_b", "-b", "file size in B", "0");
     parser.addSwitch("--file_size_kb", "-k", "file size in KB", "0");
     parser.addSwitch("--file_size_mb", "-m", "file size in MB", "0");
-    parser.addSwitch("--input_file", "-f", "input file string", "");
     parser.addSwitch("--device", "-d", "device id", "0");
     parser.parse(argc, argv);
-    if (argc < 7) {
+    if (argc < 9) {
         parser.printHelp();
         return EXIT_FAILURE;
     }
@@ -355,6 +357,7 @@ int main(int argc, char** argv)
     // Read settings
     auto binaryFile = parser.value("xclbin_file");
     string filepath = parser.value("file_path");
+    string respath = parser.value("result_path");
     string dev_id = parser.value("device");
     int64_t file_size_b = stoi(parser.value("file_size_b"));
     int64_t file_size_kb = stoi(parser.value("file_size_kb"));
@@ -365,6 +368,10 @@ int main(int argc, char** argv)
 
     if (filepath.empty()) {
         cout << "Please specify the file to be compressed\n";
+        return EXIT_FAILURE;
+    }
+    if (respath.empty()) {
+        cout << "Please specify the file to store compressed result\n";
         return EXIT_FAILURE;
     }
     if (file_size_kb == 0 && file_size_mb == 0 && file_size_b == 0) {
@@ -439,7 +446,7 @@ int main(int argc, char** argv)
         cout << "\n------------------------------------------------\n";
         cout << "Perform RLE compression with unaligned DRAM\n";
         cout << "-------------------------------------------------\n";
-        if (EXIT_FAILURE == ssd_compress(context, cmdq, program, filepath, file_size_byte))
+        if (EXIT_FAILURE == ssd_compress(context, cmdq, program, filepath, respath, file_size_byte))
             cout << "TEST FAILED\n";
         else
             cout << "TEST PASSED\n";
