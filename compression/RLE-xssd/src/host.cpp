@@ -151,7 +151,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     
     /* P2P Transfer to load the result into SSD */
     int compsize = compinfo[0];
-    bufsize = 256 * BytesPerMB < compsize ? 256 * BytesPerMB : compsize;
+    bufsize = 256 * BytesPerMB < compsize ? 256 * BytesPerMB : 2;
     iter = ceil(compsize/(int)bufsize);
     offset = 0;
 
@@ -172,6 +172,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     for (int i = 0; i < iter; i++) {
         ret = pwrite(nvmeFd, (void*)compressed, bufsize, offset);
         offset += bufsize;
+        cout << "Iter: " << i << endl;
         if (ret == -1) {
             cout << "P2P: write() failed, err: " << ret << ", line: " << __LINE__ << endl;
             (void)close(nvmeFd);
