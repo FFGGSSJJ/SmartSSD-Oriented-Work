@@ -140,11 +140,11 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
         }
     }
     std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
+    (void)close(nvmeFd);
 
     /* Calculate the transfer time and bandwidth */
     cl_ulong Time = std::chrono::duration_cast<std::chrono::microseconds>(End1 - Start1).count();
     bw_info(Time, filesize);
-
 
     /* Launch the kernels */
     cout << "\nLaunch the RLE Compression kernel" << endl;
@@ -156,17 +156,30 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     /* Calculate kernel launch time */
     cl_ulong CompressTime = std::chrono::duration_cast<std::chrono::microseconds>(compress_end - compress_start).count();
     double dnsduration = (double)CompressTime;
-    double dsduration = dnsduration / ((double)1000000);
+    double dsduration = dnsduration / ((double)1000000);ca
     cout << "Kernel execution time: " << dnsduration << "ns = " << dsduration << "s\n";
 
     /* Transfer compression information buffer */
     OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({infoBuf}, CL_MIGRATE_MEM_OBJECT_HOST));
     cmdq.finish();
+
+
+    /* Open file */
+    /* O_DIRECT: 
+     * When direct I/O is done on 4K sector disks, 
+     * the alignment requirement for the number of bytes, 
+     * the file offset, and the user memory buffer is 4K bytes 
+     */
+    nvmeFd = open(respath.c_str(), O_RDWR | O_DIRECT);
+    if (nvmeFd < 0) {
+        cout << "Open Failed\n";
+        return EXIT_FAILURE;
+    } cout << "INFO: Successfully opened NVME SSD for read(): " << filepath << endl;
     
     /* P2P Transfer to load the result into SSD */
     int compsize = compinfo[0];
     bufsize = 256 * BytesPerMB < compsize ? 256 * BytesPerMB : 4 * BytesPerKB;
-    iter = ceil(compsize/(int)bufsize);
+    iter = ceil(((double)compsize/(double)bufsize)) == 0 ? 1 : ceil(compsize/(int)bufsize);
     offset = 0;
 
     /* check the result */
