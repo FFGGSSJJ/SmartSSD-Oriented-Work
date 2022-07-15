@@ -179,7 +179,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     /* P2P Transfer to load the result into SSD */
     int compsize = compinfo[0];
     bufsize = 256 * BytesPerMB < compsize ? 256 * BytesPerMB : 4 * BytesPerKB;
-    iter = ceil(((double)compsize/(double)bufsize)) == 0 ? 1 : ceil(compsize/(int)bufsize);
+    iter = ceil(((double)compsize/(double)bufsize));
     offset = 0;
 
     /* check the result */
