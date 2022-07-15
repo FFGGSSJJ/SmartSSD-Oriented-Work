@@ -156,7 +156,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     /* Calculate kernel launch time */
     cl_ulong CompressTime = std::chrono::duration_cast<std::chrono::microseconds>(compress_end - compress_start).count();
     double dnsduration = (double)CompressTime;
-    double dsduration = dnsduration / ((double)1000000);ca
+    double dsduration = dnsduration / ((double)1000000);
     cout << "Kernel execution time: " << dnsduration << "ns = " << dsduration << "s\n";
 
     /* Transfer compression information buffer */
