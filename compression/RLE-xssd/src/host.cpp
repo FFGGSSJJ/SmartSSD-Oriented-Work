@@ -145,7 +145,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     cout << "Original Size: " << xcl::convert_size(filesize) << " Bufsize: " << xcl::convert_size(bufsize) << endl;
     std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iter; i++) {
-        ret = pread(nvmeFd, (uint8_t*)(original + bufsize*iter), bufsize, offset);
+        ret = pread(nvmeFd, (void*)((uint8_t*)original + bufsize*iter), bufsize, offset);
         offset += (uint32_t)bufsize;
         if (ret == -1) {
             cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << endl;
@@ -205,7 +205,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     cout << "Compressed Size = " << xcl::convert_size(compsize) << "Bufsize: " << xcl::convert_size(bufsize) << endl;
     std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iter; i++) {
-        ret = pwrite(nvmeFd, (uint8_t*)(compressed + iter*bufsize), bufsize, offset);
+        ret = pwrite(nvmeFd, (void*)((uint8_t*)compressed + iter*bufsize), bufsize, offset);
         offset += (uint32_t)bufsize;
         if (ret == -1) {
             cout << "P2P: write() failed, err: " << ret << ", line: " << __LINE__ << endl;
