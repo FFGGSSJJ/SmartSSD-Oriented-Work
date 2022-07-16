@@ -86,7 +86,7 @@ mem_wt:
         out[encodeTotSize + i] = in[i];
     }
 
-    /* to avoid dma fail */
+    /* to avoid DMA failure */
     for (int i = encodeBlkSize; i < BLOCK_SIZE; i++) 
         out[encodeTotSize + i] = 0;
     

@@ -31,12 +31,13 @@ using std::endl;
 int64_t BytesPerKB =  1024;
 int64_t BytesPerMB =  1024*1024;
 int64_t BytesPerGB =  1024*1024*1024;
-size_t MAX_SIZE =      2*BytesPerGB;    // 2GB
+size_t PAGE_SIZE =    4*BytesPerKB;
+size_t MAX_SIZE =     2*BytesPerGB;    // 2GB
 
 /* Global var for buffer size */
-size_t max_buffer = 16 * 1024 * 1024;   // 16MB
-size_t mid_buffer = 2 * 1024 * 1024;    // 2MB
-size_t min_buffer = 4 * 1024;           // 4KB
+size_t max_buffer = 512 * BytesPerMB;   // 512MB
+size_t mid_buffer = 16 * BytesPerMB;    // 16MB
+size_t min_buffer = PAGE_SIZE;          // 4KB
 
 
 
@@ -48,6 +49,18 @@ void bw_info(cl_ulong Time, int datasize)
     string size_str = xcl::convert_size(datasize);
     cout << "Data Size = " << size_str << " Throughput = " << std::setprecision(2) << std::fixed << gbpersec << "GB/s\n";
     return;
+}
+
+/**
+ * @brief find the largest 4KB alignment buffer size
+ * 
+ * @param filesize 
+ * @return int64_t 
+ */
+int32_t best_bufsize(int32_t filesize)
+{
+    if (filesize >= max_buffer)    return max_buffer;
+    else    return ((int32_t)floor((long double)filesize/(double)PAGE_SIZE))*PAGE_SIZE;
 }
 
 
@@ -69,16 +82,16 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     cl::Kernel kernel;
 
     /* Allocate space to store information of compression */
-    int32_t* compinfo = (int32_t*)malloc(10*sizeof(int32_t));
-    for (int i = 0; i < 10; i++)    compinfo[i] = 0;
+    int32_t* compinfo = (int32_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
+    for (int i = 0; i < PAGE_SIZE/sizeof(int32_t); i++)    compinfo[i] = 0;
 
+    /* Allocate global buffers in the global memory of device*/
     cl_mem_ext_ptr_t outExt;
     outExt = {XCL_MEM_EXT_P2P_BUFFER, nullptr, 0};
-    /* Allocate global buffers in the global memory of device*/
     std::cout << "Allocate global buffer in FPGA\n";
     cl::Buffer origData(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, (size_t)filesize, &outExt, &err);
     cl::Buffer compData(context, CL_MEM_WRITE_ONLY | CL_MEM_EXT_PTR_XILINX, (size_t)filesize, &outExt, &err);
-    cl::Buffer infoBuf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, 5*sizeof(int32_t), (void*)compinfo, &err);
+    cl::Buffer infoBuf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, PAGE_SIZE, (void*)compinfo, &err);
 
     /* Map p2p buffers */
     std::cout << "\nMap P2P device buffers to host access pointers\n" << std::endl;
@@ -113,6 +126,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
      * When direct I/O is done on 4K sector disks, 
      * the alignment requirement for the number of bytes, 
      * the file offset, and the user memory buffer is 4K bytes 
+     * refer to https://www.ibm.com/docs/en/spectrum-scale/5.0.5?topic=applications-considerations-use-direct-io-o-direct
      */
     nvmeFd = open(filepath.c_str(), O_RDWR | O_DIRECT);
     if (nvmeFd < 0) {
@@ -122,22 +136,23 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
 
 
     /* Transfer to original data into FPGA */
-    size_t bufsize = 512 * BytesPerMB < filesize ? 512 * BytesPerMB : filesize;
-    int iter = ceil(filesize/(int)bufsize);
+    size_t bufsize = (size_t)best_bufsize(filesize);
+    int iter = ceil((double)filesize/(double)bufsize);
     int ret = 0;
-    uint64_t offset = 0;
+    uint32_t offset = 0;
 
     cout << "Start P2P to transfer Original Data from SSD into FPGA\n";
     cout << "Original Size: " << xcl::convert_size(filesize) << " Bufsize: " << xcl::convert_size(bufsize) << endl;
     std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iter; i++) {
-        ret = pread(nvmeFd, (void*)original, bufsize, offset);
-        offset += (uint64_t)bufsize;
+        ret = pread(nvmeFd, (void*)(original + bufsize*iter), bufsize, offset);
+        offset += (uint32_t)bufsize;
         if (ret == -1) {
             cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << endl;
             (void)close(nvmeFd);
             return EXIT_FAILURE;
-        }
+        } else 
+            cout << "Read size in iteration " << i << ": " << ret << endl;
     }
     std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
     (void)close(nvmeFd);
@@ -163,6 +178,11 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({infoBuf}, CL_MIGRATE_MEM_OBJECT_HOST));
     cmdq.finish();
 
+    /* check the result */
+    cout << "\n\nCompress Data: \n";
+    for (int i = 0; i < compsize; i++)
+        cout << ((uint8_t*)compressed)[i];
+
 
     /* Open file */
     /* O_DIRECT: 
@@ -178,27 +198,22 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     
     /* P2P Transfer to load the result into SSD */
     int compsize = compinfo[0];
-    bufsize = 256 * BytesPerMB < compsize ? 256 * BytesPerMB : 4 * BytesPerKB;
+    bufsize = best_bufsize(compsize);
     iter = ceil(((double)compsize/(double)bufsize));
     offset = 0;
-
-    /* check the result */
-    cout << "\n\nCompress Data: \n";
-    for (int i = 0; i < compsize; i++)
-        cout << ((uint8_t*)compressed)[i];
 
     cout << "\nStart P2P to transfer Compressed Data from FPGA into SSD\n";
     cout << "Compressed Size = " << xcl::convert_size(compsize) << "Bufsize: " << xcl::convert_size(bufsize) << endl;
     std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iter; i++) {
-        ret = pwrite(nvmeFd, (void*)compressed, bufsize, offset);
-        offset += bufsize;
-        cout << "Iter: " << i << endl;
+        ret = pwrite(nvmeFd, (void*)(compressed + iter*bufsize), bufsize, offset);
+        offset += (uint32_t)bufsize;
         if (ret == -1) {
             cout << "P2P: write() failed, err: " << ret << ", line: " << __LINE__ << endl;
             (void)close(nvmeFd);
             return EXIT_FAILURE;
-        }
+        } else 
+            cout << "Write size in iteration " << i << ": " << ret << endl;
     }
     std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
     (void)close(nvmeFd);
