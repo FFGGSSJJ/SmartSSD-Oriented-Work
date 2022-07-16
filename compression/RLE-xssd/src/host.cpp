@@ -139,14 +139,14 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     size_t bufsize = (size_t)best_bufsize(filesize);
     int iter = ceil((double)filesize/(double)bufsize);
     int ret = 0;
-    uint32_t offset = 0;
+    uint64_t offset = 0;
 
     cout << "Start P2P to transfer Original Data from SSD into FPGA\n";
     cout << "Original Size: " << xcl::convert_size(filesize) << " Bufsize: " << xcl::convert_size(bufsize) << endl;
     std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iter; i++) {
         ret = pread(nvmeFd, (void*)original, bufsize, offset);
-        offset += (uint32_t)bufsize;
+        offset += (uint64_t)bufsize;
         if (ret == -1) {
             cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << endl;
             (void)close(nvmeFd);
@@ -206,7 +206,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iter; i++) {
         ret = pwrite(nvmeFd, (void*)compressed, bufsize, offset);
-        offset += (uint32_t)bufsize;
+        offset += (uint64_t)bufsize;
         if (ret == -1) {
             cout << "P2P: write() failed, err: " << ret << ", line: " << __LINE__ << endl;
             (void)close(nvmeFd);
