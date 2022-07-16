@@ -23,6 +23,7 @@ using namespace::std;
 #define BytesPerNum 8
 #define BytesPerKB  1024
 #define BytesPerMB  1024*1024
+#define PAGE_SIZE   4*BytesPerKB
 #define BLOCK_SIZE  1024*BytesPerNum    // 1024 * 8 Byte
 #define BURST_SIZE  32      // 32 Byte
 
@@ -216,6 +217,8 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int32_t* info)
 
     /* update compression info */
     info[0] = encodeTotSize;
+    for (int i = 1; i < PAGE_SIZE/sizeof(int32_t); i++)
+        info[i] = 0;
 }
 
 }
