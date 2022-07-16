@@ -59,7 +59,7 @@ void bw_info(cl_ulong Time, int datasize)
  */
 int32_t best_bufsize(int32_t filesize)
 {
-    if (filesize >= max_buffer)    return max_buffer;
+    if (filesize >= (int32_t)max_buffer)    return max_buffer;
     else    return ((int32_t)floor((long double)filesize/(double)PAGE_SIZE))*PAGE_SIZE;
 }
 
@@ -83,7 +83,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
 
     /* Allocate space to store information of compression */
     int32_t* compinfo = (int32_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
-    for (int i = 0; i < PAGE_SIZE/sizeof(int32_t); i++)    compinfo[i] = 0;
+    for (uint32_t i = 0; i < PAGE_SIZE/sizeof(int32_t); i++)    compinfo[i] = 0;
 
     /* Allocate global buffers in the global memory of device*/
     cl_mem_ext_ptr_t outExt;
@@ -145,7 +145,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     cout << "Original Size: " << xcl::convert_size(filesize) << " Bufsize: " << xcl::convert_size(bufsize) << endl;
     std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iter; i++) {
-        ret = pread(nvmeFd, (void*)(original + bufsize*iter), bufsize, offset);
+        ret = pread(nvmeFd, (uint8_t*)(original + bufsize*iter), bufsize, offset);
         offset += (uint32_t)bufsize;
         if (ret == -1) {
             cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << endl;
@@ -178,12 +178,6 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({infoBuf}, CL_MIGRATE_MEM_OBJECT_HOST));
     cmdq.finish();
 
-    /* check the result */
-    cout << "\n\nCompress Data: \n";
-    for (int i = 0; i < compsize; i++)
-        cout << ((uint8_t*)compressed)[i];
-
-
     /* Open file */
     /* O_DIRECT: 
      * When direct I/O is done on 4K sector disks, 
@@ -202,11 +196,16 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     iter = ceil(((double)compsize/(double)bufsize));
     offset = 0;
 
+    /* check the result */
+    cout << "\n\nCompress Data: \n";
+    for (int i = 0; i < compsize; i++)
+        cout << ((uint8_t*)compressed)[i];
+
     cout << "\nStart P2P to transfer Compressed Data from FPGA into SSD\n";
     cout << "Compressed Size = " << xcl::convert_size(compsize) << "Bufsize: " << xcl::convert_size(bufsize) << endl;
     std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iter; i++) {
-        ret = pwrite(nvmeFd, (void*)(compressed + iter*bufsize), bufsize, offset);
+        ret = pwrite(nvmeFd, (uint8_t*)(compressed + iter*bufsize), bufsize, offset);
         offset += (uint32_t)bufsize;
         if (ret == -1) {
             cout << "P2P: write() failed, err: " << ret << ", line: " << __LINE__ << endl;
