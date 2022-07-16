@@ -302,7 +302,7 @@ int ssd_decompress(cl::Context context, cl::CommandQueue cmdq, cl::Program progr
 
     /* Transfer to original data into FPGA */
     cout << "Start P2P to transfer Original Data from SSD into FPGA\n";
-    size_t bufsize = bufsize = (size_t)best_bufsize(filesize);
+    size_t bufsize = (size_t)best_bufsize(filesize);
     int iter = ceil((double)filesize/(double)bufsize);
     int ret = 0;
     uint32_t offset = 0;
@@ -372,11 +372,7 @@ int ssd_decompress(cl::Context context, cl::CommandQueue cmdq, cl::Program progr
 
     /* Calculate the transfer time and bandwidth */
     cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
-    dnsduration = (double)Time2;
-    dsduration = dnsduration / ((double)1000000);
-    gbpersec = (decompsize / dsduration) / ((double)1024 * 1024 * 1024);
-    size_str = xcl::convert_size(decompsize);
-    std::cout << "Decompressed Size = " << size_str << " Throughput = " << std::setprecision(2) << std::fixed << gbpersec << "GB/s\n";
+    bw_info(Time2, decompsize);
 
     /*  */
     free(compinfo);
