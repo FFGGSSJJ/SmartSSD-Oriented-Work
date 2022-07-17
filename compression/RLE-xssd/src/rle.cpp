@@ -24,8 +24,11 @@ using namespace::std;
 #define BytesPerKB  1024
 #define BytesPerMB  1024*1024
 #define PAGE_SIZE   4*BytesPerKB
-#define BLOCK_SIZE  1024*BytesPerNum    // 1024 * 8 Byte
-#define BURST_SIZE  32      // 32 Byte
+#define BLOCK_SIZE  1024*8      // 1024 * 8 Byte
+#define BURST_SIZE  32          // 32 Byte
+
+size_t MAX_SIZE =   2*1024*1024*1024;               // 2GB
+const int32_t MAX_BLOCK_NUM = MAX_SIZE/BLOCK_SIZE;
 
 
 
@@ -199,7 +202,7 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int32_t* info)
 
     /* local blocks */
     uint8_t origBlock[BLOCK_SIZE];
-    uint8_t compBlock[BLOCK_SIZE + 1];
+    uint8_t compBlock[BLOCK_SIZE];
 
     /* size in byte */
     int loadedSize = 0;
@@ -208,11 +211,13 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int32_t* info)
 
     /* */
     int iter = size/(BLOCK_SIZE);
-    for (int i = 0; i < iter; i++) {
-        loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i);
-        encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize);
-        StoreData((uint8_t*)compBlock, (uint8_t*)compressed, encodeBlkSize, encodeTotSize);
-        encodeTotSize += encodeBlkSize;
+    for (int i = 0; i < MAX_BLOCK_NUM; i++) {
+        if (i < iter) {
+            loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i);
+            encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize);
+            StoreData((uint8_t*)compBlock, (uint8_t*)compressed, encodeBlkSize, encodeTotSize);
+            encodeTotSize += encodeBlkSize;
+        }
     }
 
     /* update compression info */
