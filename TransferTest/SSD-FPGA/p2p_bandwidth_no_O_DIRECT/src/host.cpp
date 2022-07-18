@@ -90,7 +90,7 @@ int p2p_host_to_ssd(int& nvmeFd,
             double dnsduration = (double)p2pTime;
             double dsduration = dnsduration / ((double)1000000);
             double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
-            std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
+            std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Time(ns): " << dnsduration << " Throughput = " << std::setprecision(2)
                     << std::fixed << gbpersec << "GB/s\n";
         }
     }
@@ -159,7 +159,7 @@ void p2p_ssd_to_host(int& nvmeFd,
             double dnsduration = (double)p2pTime;
             double dsduration = dnsduration / ((double)1000000);
             double gbpersec = (iter * bufsize / dsduration) / ((double)1024 * 1024 * 1024);
-            std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Throughput = " << std::setprecision(2)
+            std::cout << "Buffer = " << size_str << " Iterations = " << iter << " Time(ns): " << dnsduration << " Throughput = " << std::setprecision(2)
                     << std::fixed << gbpersec << "GB/s\n";
         }
     }

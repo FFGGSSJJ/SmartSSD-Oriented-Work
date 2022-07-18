@@ -19,14 +19,14 @@
 using namespace::std;
 
 /* define */
-#define BURST       0
+#define BURST       1
 #define BytesPerNum 8
 #define BytesPerKB  1024
 #define BytesPerMB  1024*1024
 #define PAGE_SIZE   4*BytesPerKB
 #define BLOCK_SIZE  1024*8      // 1024 * 8 Byte
 #define BURST_SIZE  32          // 32 Byte
-#define MAX_BLOCK   2*1024*1024/8
+#define MAX_BLOCK   PAGE_SIZE/2 // 2048
 
 
 
@@ -45,7 +45,6 @@ mem_brd:
     /* burst size is 32 bytes */
     for (int i = 0; i < burstNum; i++) {
     #pragma HLS PIPELINE II = 1
-    #pragma HLS LOOP_FLATTEN
         memcpy((void*)(out + 4*(offset + i)), (void*)(in + offset + i), burst_size);
     }
     return;
@@ -61,7 +60,6 @@ void BurstStoreData(uint64_t* in, T* out, int encodeBlkSize, int encodeTotSize, 
 mem_bwt:
     for (int i = 0; i < burstNum; i++) {
     #pragma HLS PIPELINE II = 1
-    #pragma HLS LOOP_FLATTEN
         memcpy((void*)(out + i), (void*)(in + 4*i), burst_size);
     }
 
@@ -81,16 +79,17 @@ mem_rd:
     return size2read;
 }
 
-void StoreData(uint8_t* in, uint8_t* out, int encodeBlkSize, int encodeTotSize)
+void StoreData(uint8_t* in, uint8_t* out, int16_t* info, int encodeBlkSize, int blockId)
 {
 mem_wt:
+    info[blockId] = encodeBlkSize;
     for (int i = 0; i < encodeBlkSize; i++) {
-        out[encodeTotSize + i] = in[i];
+        out[blockId*BLOCK_SIZE + i] = in[i];
     }
 
     /* to avoid DMA failure */
     for (int i = encodeBlkSize; i < BLOCK_SIZE; i++) 
-        out[encodeTotSize + i] = 0;
+        out[blockId*BLOCK_SIZE + i] = 0;
     
 }
 #endif
@@ -182,18 +181,12 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData, int orgSize)
     return encodelen;
 }
 
-static int encodePixelLevel()
-{
-    return 0;
-}
-
-
 
 
 
 extern "C" {
 
-void rle(uint8_t* original, uint8_t* compressed, int size, int32_t* info)
+void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* info)
 {
 #if BURST
 #pragma HLS INTERFACE m_axi port = original bundle = gmem0 num_read_outstanding = 32 max_read_burst_length = 32 offset = slave
@@ -214,21 +207,20 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int32_t* info)
     int encodeBlkSize = 0;
     int encodeTotSize = 0;
 
-    /* */
+    for (int i = 0; i < MAX_BLOCK; i++) {
+        info[i] = 0;
+
+    /* Perform Load-Encode-Store */
     int iter = size/(BLOCK_SIZE);
     for (int i = 0; i < MAX_BLOCK; i++) {
+    #pragma HLS DATAFLOW
+    #pragma HLS PIPELINE
         if (i < iter) {
             loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i);
             encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize);
-            StoreData((uint8_t*)compBlock, (uint8_t*)compressed, encodeBlkSize, encodeTotSize);
-            encodeTotSize += encodeBlkSize;
+            StoreData((uint8_t*)compBlock, (uint8_t*)compressed, info, encodeBlkSize, i);
         }
     }
-
-    /* update compression info */
-    info[0] = encodeTotSize;
-    for (int i = 1; i < PAGE_SIZE/sizeof(int32_t); i++)
-        info[i] = 0;
 }
 
 }
