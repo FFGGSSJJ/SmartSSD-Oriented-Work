@@ -182,6 +182,13 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData, int orgSize)
     return encodelen;
 }
 
+static int encodePixelLevel()
+{
+    return 0;
+}
+
+
+
 
 
 extern "C" {
