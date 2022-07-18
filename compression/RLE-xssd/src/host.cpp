@@ -60,7 +60,7 @@ void bw_info(cl_ulong Time, int datasize)
 int32_t best_bufsize(int32_t filesize)
 {
     if (filesize >= (int32_t)max_buffer)    return max_buffer;
-    if (filesize <= PAGE_SIZE)              return PAGE_SIZE;
+    if (filesize <= (int32_t)PAGE_SIZE)     return PAGE_SIZE;
     else    return ((int32_t)floor((long double)filesize/(double)PAGE_SIZE))*PAGE_SIZE;
 }
 

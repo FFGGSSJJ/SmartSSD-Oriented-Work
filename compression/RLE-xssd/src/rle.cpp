@@ -26,9 +26,7 @@ using namespace::std;
 #define PAGE_SIZE   4*BytesPerKB
 #define BLOCK_SIZE  1024*8      // 1024 * 8 Byte
 #define BURST_SIZE  32          // 32 Byte
-
-size_t MAX_SIZE =   2*1024*1024*1024;               // 2GB
-const int32_t MAX_BLOCK_NUM = MAX_SIZE/BLOCK_SIZE;
+#define MAX_BLOCK   2*1024*1024/8
 
 
 
@@ -211,7 +209,7 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int32_t* info)
 
     /* */
     int iter = size/(BLOCK_SIZE);
-    for (int i = 0; i < MAX_BLOCK_NUM; i++) {
+    for (int i = 0; i < MAX_BLOCK; i++) {
         if (i < iter) {
             loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i);
             encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize);
