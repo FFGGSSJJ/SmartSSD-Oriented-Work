@@ -230,7 +230,6 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* info)
     int iter = size/(BLOCK_SIZE);
     for (int i = 0; i < MAX_BLOCK; i++) {
     #pragma HLS DATAFLOW
-    #pragma HLS PIPELINE
         if (i < iter) {
             loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i);
             encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize);
