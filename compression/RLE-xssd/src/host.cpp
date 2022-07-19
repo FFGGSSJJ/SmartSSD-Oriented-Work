@@ -83,8 +83,8 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     cl::Kernel kernel;
 
     /* Allocate space to store information of compression */
-    int32_t* compinfo = (int32_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
-    for (uint32_t i = 0; i < PAGE_SIZE/sizeof(int32_t); i++)    compinfo[i] = 0;
+    int16_t* compinfo = (int16_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
+    for (uint32_t i = 0; i < PAGE_SIZE/sizeof(int16_t); i++)    compinfo[i] = 0;
 
     /* Allocate global buffers in the global memory of device*/
     cl_mem_ext_ptr_t outExt;
@@ -193,8 +193,10 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     
     /* P2P Transfer to load the result into SSD */
     int compsize = 0;
-    for (int i = 1; i < compinfo[0] + 1; i++)
+    for (int i = 1; i < compinfo[0] + 1; i++) {
+        cout << "Block " << i - 1 << ": " << compinfo[i];
         compsize += compinfo[i];
+    }
     bufsize = (size_t)best_bufsize(compsize);
     iter = ceil(((double)compsize/(double)bufsize));
     offset = 0;
