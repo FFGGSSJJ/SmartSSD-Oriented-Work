@@ -19,7 +19,7 @@
 using namespace::std;
 
 /* define */
-#define BURST       1
+#define BURST       0
 #define BytesPerNum 8
 #define BytesPerKB  1024
 #define BytesPerMB  1024*1024
@@ -32,40 +32,44 @@ using namespace::std;
 
 #if BURST /* Burst Memory IO */
 template <typename T>
-void BurstLoadData(T* in, uint64_t* out, int remain_size, int block_size, int burst_size, int blockId)
+int BurstLoadData(T* in, uint8_t* out, int remain_size, int block_size, int blockId)
 {
     /* Make HLS indicate it is multiple of 1024 */
     block_size = (block_size/1024)*1024;
-    int burstNum = block_size/burst_size;
-    int offset = blockId * burstNum;
+    int burstNum = block_size/BURST_SIZE;
+    int offset = blockId*burstNum;
 
     /* proceed burst read from global memory */
 mem_brd:
-
-    /* burst size is 32 bytes */
     for (int i = 0; i < burstNum; i++) {
     #pragma HLS PIPELINE II = 1
-        memcpy((void*)(out + 4*(offset + i)), (void*)(in + offset + i), burst_size);
+        memcpy((void*)(out + BURST_SIZE*i), (void*)(in + offset + i), BURST_SIZE);
     }
-    return;
+    return block_size;
 }
 
 template <typename T>
-void BurstStoreData(uint64_t* in, T* out, int encodeBlkSize, int encodeTotSize, int burst_size)
+void BurstStoreData(uint8_t* in, T* out, int16_t* info, int encodeBlkSize, int blockId)
 {
     /* encodeBlkSize might not be multiple of 1024 */
-    int remainSize = encodeBlkSize%burst_size;
-    int burstNum = encodeBlkSize/burst_size;
+    int remainSize = encodeBlkSize%BURST_SIZE;
+    int burstNum = encodeBlkSize/BURST_SIZE;
+    int offset = blockId*(BLOCK_SIZE/BURST_SIZE);
     /* proceed burst write to global memory */
 mem_bwt:
+    info[blockId] = encodeBlkSize
     for (int i = 0; i < burstNum; i++) {
     #pragma HLS PIPELINE II = 1
-        memcpy((void*)(out + i), (void*)(in + 4*i), burst_size);
+        memcpy((void*)(out + offset + i), (void*)(in + BURST_SIZE*i), BURST_SIZE);
     }
 
     /* proceed non-burst write */
     if (remainSize > 0)
-        memcpy((void*)(out + burstNum), (void*)(in + 4*burstNum), remainSize);
+        memcpy((void*)(out + offset + burstNum), (void*)(in + BURST_SIZE*burstNum), remainSize);
+
+    /* to avoid DMA failure */
+    for (int i = encodeBlkSize; i < BLOCK_SIZE; i++) 
+        ((uint8_t*)out)[blockId*BLOCK_SIZE + i] = 0;
     return;
 }
 #else /* Normal Memory IO*/
@@ -211,6 +215,18 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* info)
         info[i] = 0;
 
     /* Perform Load-Encode-Store */
+    #if BURST
+    int iter = size/(BLOCK_SIZE);
+    for (int i = 0; i < MAX_BLOCK; i++) {
+    #pragma HLS DATAFLOW
+    #pragma HLS PIPELINE
+        if (i < iter) {
+            loadedSize = BurstLoadData((ap_int<256>*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i);
+            encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize);
+            BurstStoreData((uint8_t*)compBlock, (ap_int<256>*)compressed, info, encodeBlkSize, i);
+        }
+    }
+    #else
     int iter = size/(BLOCK_SIZE);
     for (int i = 0; i < MAX_BLOCK; i++) {
     #pragma HLS DATAFLOW
@@ -221,6 +237,8 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* info)
             StoreData((uint8_t*)compBlock, (uint8_t*)compressed, info, encodeBlkSize, i);
         }
     }
+    #endif
+
 }
 
 }
