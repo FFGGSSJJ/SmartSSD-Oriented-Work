@@ -217,16 +217,16 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* info)
     int encodeTotSize = 0;
 
     info[0] = ceil((double)size/(double)(BLOCK_SIZE));
-    for (int i = 0; i < MAX_BLOCK; i++) 
+    for (int i = 1; i < MAX_BLOCK; i++) 
         info[i] = 0;
 
     /* Perform Load-Encode-Store */
     #if BURST
     int iter = size/(BLOCK_SIZE);
     for (int i = 0; i < MAX_BLOCK; i++) {
-    #pragma HLS DATAFLOW
     #pragma HLS PIPELINE
         if (i < iter) {
+        #pragma HLS DATAFLOW
             loadedSize = BurstLoadData((ap_int<256>*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i);
             encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize);
             BurstStoreData((uint8_t*)compBlock, (ap_int<256>*)compressed, info, encodeBlkSize, i);
@@ -234,7 +234,9 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* info)
     }
     #else
     int iter = size/(BLOCK_SIZE);
+rle_loop:
     for (int i = 0; i < MAX_BLOCK; i++) {
+    #pragma HLS PIPELINE
         if (i < iter) {
         #pragma HLS DATAFLOW
             loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i);
