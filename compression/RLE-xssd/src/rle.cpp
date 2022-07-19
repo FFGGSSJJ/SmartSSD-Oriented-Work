@@ -235,8 +235,8 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* info)
     #else
     int iter = size/(BLOCK_SIZE);
     for (int i = 0; i < MAX_BLOCK; i++) {
-    #pragma HLS DATAFLOW
         if (i < iter) {
+        #pragma HLS DATAFLOW
             loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i);
             encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize);
             StoreData((uint8_t*)compBlock, (uint8_t*)compressed, info, encodeBlkSize, i);
