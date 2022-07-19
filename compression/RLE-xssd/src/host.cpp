@@ -192,7 +192,9 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     } cout << "INFO: Successfully opened NVME SSD for read(): " << filepath << endl;
     
     /* P2P Transfer to load the result into SSD */
-    int compsize = compinfo[0];
+    int compsize = 0;
+    for (int i = 1; i < compinfo[0] + 1; i++)
+        compsize += compinfo[i];
     bufsize = (size_t)best_bufsize(compsize);
     iter = ceil(((double)compsize/(double)bufsize));
     offset = 0;

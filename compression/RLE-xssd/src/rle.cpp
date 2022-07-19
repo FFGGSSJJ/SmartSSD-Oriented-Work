@@ -78,6 +78,7 @@ int LoadData(uint8_t* in, uint8_t* out, int remain_size, int block_size, int blo
     int size2read = remain_size > block_size ? block_size : remain_size;
 mem_rd:
     for (int i = 0; i < size2read; i++) {
+    #pragma HLS PIPELINE II = 1
         out[blockId*block_size + i] = in[i];
     }
     return size2read;
@@ -86,14 +87,17 @@ mem_rd:
 void StoreData(uint8_t* in, uint8_t* out, int16_t* info, int encodeBlkSize, int blockId)
 {
 mem_wt:
-    info[blockId] = encodeBlkSize;
+    info[blockId + 1] = encodeBlkSize;
     for (int i = 0; i < encodeBlkSize; i++) {
+    #pragma HLS PIPELINE II = 1
         out[blockId*BLOCK_SIZE + i] = in[i];
     }
 
     /* to avoid DMA failure */
-    for (int i = encodeBlkSize; i < BLOCK_SIZE; i++) 
+    for (int i = encodeBlkSize; i < BLOCK_SIZE; i++) {
+    #pragma HLS PIPELINE II = 1
         out[blockId*BLOCK_SIZE + i] = 0;
+    }
     
 }
 #endif
@@ -211,7 +215,8 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* info)
     int encodeBlkSize = 0;
     int encodeTotSize = 0;
 
-    for (int i = 0; i < MAX_BLOCK; i++) {
+    info[0] = ceil((double)size/(double)(BLOCK_SIZE));
+    for (int i = 0; i < MAX_BLOCK; i++) 
         info[i] = 0;
 
     /* Perform Load-Encode-Store */
