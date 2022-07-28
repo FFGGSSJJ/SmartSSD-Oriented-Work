@@ -26,6 +26,7 @@ using namespace::std;
 #define BytesPerMB  1024*1024
 #define PAGE_SIZE   4*BytesPerKB
 #define BLOCK_SIZE  1024*8      // 1024 * 8 Byte
+#define PAGE_SIZE   1024*4      // 1024 * 4 Byte
 #define BURST_SIZE  32          // 32 Byte
 #define MAX_BLOCK   PAGE_SIZE/2 // 2048
 
@@ -217,6 +218,7 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* info)
     int encodeTotSize = 0;
 
     info[0] = ceil((double)size/(double)(BLOCK_SIZE));
+    /* fill the buffer to avoid DMA failure */
     for (int i = 1; i < MAX_BLOCK; i++) 
         info[i] = 0;
 
@@ -224,7 +226,7 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* info)
     #if BURST
     int iter = size/(BLOCK_SIZE);
     for (int i = 0; i < MAX_BLOCK; i++) {
-    #pragma HLS PIPELINE
+    //#pragma HLS PIPELINE
         if (i < iter) {
         #pragma HLS DATAFLOW
             loadedSize = BurstLoadData((ap_int<256>*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i);
@@ -236,7 +238,7 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* info)
     int iter = size/(BLOCK_SIZE);
 rle_loop:
     for (int i = 0; i < MAX_BLOCK; i++) {
-    #pragma HLS PIPELINE
+    //#pragma HLS PIPELINE
         if (i < iter) {
         #pragma HLS DATAFLOW
             loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i);

@@ -168,11 +168,6 @@ int main(int argc, char* argv[]) {
     start = clock();
     for (int i = 0; i < DATA_SIZE; i++) {
         int host_result = ptr_a[i] + ptr_b[i];
-        if (ptr_result[i] != host_result) {
-            printf(error_message.c_str(), i, host_result, ptr_result[i]);
-            match = 1;
-            break;
-        }
     }
     end  = clock();
     cpu_time = (double)(end - start);

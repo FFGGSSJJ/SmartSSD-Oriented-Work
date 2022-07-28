@@ -137,15 +137,14 @@ static int decodeByteLevel(uint8_t* compData, uint8_t* decompData, int size)
 int main()
 {
     /* Allocate Data in DRAM */
-    uint8_t* original = (uint8_t*)malloc((size_t)SIZE);
-    uint8_t* compressed = (uint8_t*)malloc((size_t)SIZE*2);
+    uint8_t* original = (uint8_t*)malloc((size_t)SIZE*10);
+    uint8_t* compressed = (uint8_t*)malloc((size_t)SIZE*10);
     uint8_t* decompressed = (uint8_t*)malloc((size_t)SIZE);
 
     /* Initialize matrix */
-    for (int i = 0; i < SIZE; i++) {
-        if (i%4 == 0)   original[i] = 'a';
-        else if (i%4 == 1)  original[i] = 'b';
-        else                original[i] = 'd';
+    std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < 10*SIZE; i++) {
+        original[i] = 'a';
         //original[i] = i > SIZE/2 ? 'a' : 'b';
         compressed[i] = 0;
     }
@@ -155,7 +154,14 @@ int main()
     cout << "\n------------------------------------------------\n";
     cout << "Perform RLE compression with unaligned DRAM\n";
     cout << "-------------------------------------------------\n";
-    encodelen = encodeByteLevel(original, compressed);
+    for  (int i = 0; i < 10; i++) {
+        encodelen = encodeByteLevel(original + BLOCK_SIZE*i, compressed + BLOCK_SIZE*i);
+    }
+    std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
+    double Time = std::chrono::duration_cast<std::chrono::microseconds>(End1 - Start1).count();
+    double dusduration = Time;
+    double dsduration = dusduration / ((double)1000000);
+    cout <<  "Time: " << dusduration << endl;
 
     cout << "Compressed length: " << encodelen << endl;
     cout << "Compressed Data: \n";
@@ -164,6 +170,7 @@ int main()
     //     if (i%5 == 1 || i%5 == 2 || i%5 == 4) cout << compressed[i];
 
     // }
+    return 0;
 
 
     int32_t decodelen = 0;
