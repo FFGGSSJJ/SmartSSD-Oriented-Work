@@ -51,7 +51,7 @@ mem_brd:
 }
 
 template <typename T>
-void BurstStoreData(uint8_t* in, T* out, int16_t* info, int encodeBlkSize, int blockId)
+void BurstStoreData(uint8_t* in, T* out, int16_t* comp_info, int encodeBlkSize, int blockId)
 {
     /* encodeBlkSize might not be multiple of 1024 */
     int remainSize = encodeBlkSize%BURST_SIZE;
@@ -59,7 +59,7 @@ void BurstStoreData(uint8_t* in, T* out, int16_t* info, int encodeBlkSize, int b
     int offset = blockId*(BLOCK_SIZE/BURST_SIZE);
     /* proceed burst write to global memory */
 mem_bwt:
-    info[blockId] = encodeBlkSize
+    comp_info[blockId] = encodeBlkSize
     for (int i = 0; i < burstNum; i++) {
     #pragma HLS PIPELINE II = 1
         memcpy((void*)(out + offset + i), (void*)(in + BURST_SIZE*i), BURST_SIZE);
@@ -75,25 +75,29 @@ mem_bwt:
     return;
 }
 #else /* Normal Memory IO*/
-int LoadData(uint8_t* in, uint8_t* out, int remain_size, int block_size, int blockId)
+int LoadData(uint8_t* in, uint8_t* out, int remain_size, int block_size, int blockId, hls::stream<int64_t>& cmd)
 {
     int size2read = remain_size > block_size ? block_size : remain_size;
 mem_rd:
+    cmd.write(0);
     for (int i = 0; i < size2read; i++) {
     #pragma HLS PIPELINE II = 1
         out[blockId*block_size + i] = in[i];
     }
+    cmd.write(0);
     return size2read;
 }
 
-void StoreData(uint8_t* in, uint8_t* out, int16_t* info, int encodeBlkSize, int blockId)
+void StoreData(uint8_t* in, uint8_t* out, int16_t* comp_info, int encodeBlkSize, int blockId, hls::stream<int64_t>& store_cmd)
 {
+    comp_info[blockId + 1] = encodeBlkSize;
+    store_cmd.write(0);
 mem_wt:
-    info[blockId + 1] = encodeBlkSize;
     for (int i = 0; i < encodeBlkSize; i++) {
     #pragma HLS PIPELINE II = 1
         out[blockId*BLOCK_SIZE + i] = in[i];
     }
+    store_cmd.write(0);
 
     /* to avoid DMA failure */
     for (int i = encodeBlkSize; i < BLOCK_SIZE; i++) {
@@ -102,12 +106,36 @@ mem_wt:
     }
     
 }
+
+void PerformanceCheck(int16_t* perf_info, int blockId, hls::stream<int64_t>& load_cmd, hls::stream<int64_t>& compress_cmd, hls::stream<int64_t>& store_cmd)
+{
+    int64_t load_cnt, compress_cnt, store_cnt;
+    int64_t load_val, compress_val, store_val;
+
+    load_cnt = load_cmd.read();
+    compress_cnt = compress_cmd.read();
+    store_cnt = store_cmd.read();
+
+    #pragma HLS PIPELINE
+loadperf:
+    while(load_cnt.read(load_val) == false) 
+        load_cnt++;
+compperf:
+    while(compress_cnt.read(compress_val) == false) 
+        compress_cnt++;
+storeperf:
+    while(store_cnt.read(store_val) == false)
+        store_cnt++;
+    perf_info[3*blockId + 0] = load_cnt;
+    perf_info[3*blockId + 1] = compress_cnt;
+    perf_info[3*blockId + 2] = store_cnt;
+}
 #endif
 
 
 
 /* Compression */
-static int encodeByteLevel(uint8_t* orgData, uint8_t* compData, int orgSize)
+static int encodeByteLevel(uint8_t* orgData, uint8_t* compData, int orgSize, hls::stream<int64_t>& cmd)
 {
     if (orgData == NULL || compData == NULL)    return -1;
 
@@ -117,6 +145,7 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData, int orgSize)
     uint32_t encodelen = 0;
     
     /* Byte-level run check */
+    cmd.write(0);
     for (int i = 1; i < orgSize; i++) {
     
         int8_t curr = orgData[i];
@@ -187,6 +216,7 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData, int orgSize)
         compData[encodelen - count] = count;
         ++encodelen;
     }
+    cmd.write(0);
 
     return encodelen;
 }
@@ -196,16 +226,17 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData, int orgSize)
 
 extern "C" {
 
-void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* info)
+void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* comp_info, int16_t* perf_info)
 {
 #if BURST
 #pragma HLS INTERFACE m_axi port = original bundle = gmem0 num_read_outstanding = 32 max_read_burst_length = 32 offset = slave
 #pragma HLS INTERFACE m_axi port = compressed bundle = gmem1 num_write_outstanding = 32 max_write_burst_length = 32 offset = slave
-#pragma HLS INTERFACE m_axi port = info bundle = gmem2
+#pragma HLS INTERFACE m_axi port = comp_info bundle = gmem2
 #else
 #pragma HLS INTERFACE m_axi port = original bundle = gmem0
 #pragma HLS INTERFACE m_axi port = compressed bundle = gmem1
-#pragma HLS INTERFACE m_axi port = info bundle = gmem2
+#pragma HLS INTERFACE m_axi port = comp_info bundle = gmem2
+#pragma HLS INTERFACE m_axi port = perf_info bundle = gmem2
 #endif
 
     /* local blocks */
@@ -217,10 +248,17 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* info)
     int encodeBlkSize = 0;
     int encodeTotSize = 0;
 
-    info[0] = ceil((double)size/(double)(BLOCK_SIZE));
-    /* fill the buffer to avoid DMA failure */
-    for (int i = 1; i < MAX_BLOCK; i++) 
-        info[i] = 0;
+    /* fill the dram buffer to avoid DMA failure */
+    for (int i = 0; i < MAX_BLOCK; i++) { 
+        comp_info[i] = 0;
+        perf_info[i] = 0;
+    }
+    comp_info[0] = ceil((double)size/(double)(BLOCK_SIZE));
+
+    /* declare timers for each step*/
+    hls::stream<int64_t> load_cmd;  
+    hls::stream<int64_t> compress_cmd; 
+    hls::stream<int64_t> store_cmd;
 
     /* Perform Load-Encode-Store */
     #if BURST
@@ -231,7 +269,7 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* info)
         #pragma HLS DATAFLOW
             loadedSize = BurstLoadData((ap_int<256>*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i);
             encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize);
-            BurstStoreData((uint8_t*)compBlock, (ap_int<256>*)compressed, info, encodeBlkSize, i);
+            BurstStoreData((uint8_t*)compBlock, (ap_int<256>*)compressed, comp_info, encodeBlkSize, i);
         }
     }
     #else
@@ -241,9 +279,9 @@ rle_loop:
     //#pragma HLS PIPELINE
         if (i < iter) {
         #pragma HLS DATAFLOW
-            loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i);
-            encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize);
-            StoreData((uint8_t*)compBlock, (uint8_t*)compressed, info, encodeBlkSize, i);
+            loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i, load_cmd);
+            encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize, compress_cmd);
+            StoreData((uint8_t*)compBlock, (uint8_t*)compressed, comp_info, encodeBlkSize, i, store_cmd);
         }
     }
     #endif
