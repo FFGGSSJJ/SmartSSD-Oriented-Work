@@ -249,10 +249,10 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* comp_info, i
     int encodeTotSize = 0;
 
     /* fill the dram buffer to avoid DMA failure */
-    for (int i = 0; i < MAX_BLOCK; i++) { 
+    for (int i = 0; i < MAX_BLOCK; i++) 
         comp_info[i] = 0;
+    for (int i = 0; i < MAX_BLOCK*3; i++) 
         perf_info[i] = 0;
-    }
     comp_info[0] = ceil((double)size/(double)(BLOCK_SIZE));
 
     /* declare timers for each step*/
@@ -282,6 +282,7 @@ rle_loop:
             loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i, load_cmd);
             encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize, compress_cmd);
             StoreData((uint8_t*)compBlock, (uint8_t*)compressed, comp_info, encodeBlkSize, i, store_cmd);
+            PerformanceCheck(perf_info, i, load_cmd, compress_cmd, store_cmd);
         }
     }
     #endif
