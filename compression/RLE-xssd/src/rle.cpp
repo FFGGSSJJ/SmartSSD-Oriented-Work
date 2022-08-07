@@ -107,28 +107,16 @@ mem_wt:
     
 }
 
-void PerformanceCheck(int16_t* perf_info, int blockId, hls::stream<int64_t>& load_cmd, hls::stream<int64_t>& compress_cmd, hls::stream<int64_t>& store_cmd)
+void PerformanceCheck(int16_t* perf_info, int blockId, int cmdId, hls::stream<int64_t>& cmd)
 {
-    int64_t load_cnt, compress_cnt, store_cnt;
-    int64_t load_val, compress_val, store_val;
+    int64_t cnt;
+    int64_t val;
 
-    load_cnt = load_cmd.read();
-    compress_cnt = compress_cmd.read();
-    store_cnt = store_cmd.read();
-
-    #pragma HLS PIPELINE
+    cnt = cmd.read();
 loadperf:
-    while(load_cmd.read_nb(load_val) == false) 
-        load_cnt++;
-compperf:
-    while(compress_cmd.read_nb(compress_val) == false) 
-        compress_cnt++;
-storeperf:
-    while(store_cmd.read_nb(store_val) == false)
-        store_cnt++;
-    perf_info[3*blockId + 0] = load_cnt;
-    perf_info[3*blockId + 1] = compress_cnt;
-    perf_info[3*blockId + 2] = store_cnt;
+    while(cmd.read_nb(val) == false) 
+        cnt++;
+    perf_info[3*blockId + cmdId] = load_cnt;
 }
 #endif
 
@@ -280,9 +268,11 @@ rle_loop:
         if (i < iter) {
         #pragma HLS DATAFLOW
             loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i, load_cmd);
+            PerformanceCheck(perf_info, i, 0, load_cmd);
             encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize, compress_cmd);
+            PerformanceCheck(perf_info, i, 1, compress_cmd);
             StoreData((uint8_t*)compBlock, (uint8_t*)compressed, comp_info, encodeBlkSize, i, store_cmd);
-            PerformanceCheck(perf_info, i, load_cmd, compress_cmd, store_cmd);
+            PerformanceCheck(perf_info, i, 2, store_cmd);
         }
     }
     #endif
