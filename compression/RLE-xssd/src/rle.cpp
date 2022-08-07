@@ -116,7 +116,7 @@ void PerformanceCheck(int16_t* perf_info, int blockId, int cmdId, hls::stream<in
 loadperf:
     while(cmd.read_nb(val) == false) 
         cnt++;
-    perf_info[3*blockId + cmdId] = load_cnt;
+    perf_info[3*blockId + cmdId] = cnt;
 }
 #endif
 
