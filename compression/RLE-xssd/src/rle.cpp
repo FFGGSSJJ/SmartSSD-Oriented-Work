@@ -118,13 +118,13 @@ void PerformanceCheck(int16_t* perf_info, int blockId, hls::stream<int64_t>& loa
 
     #pragma HLS PIPELINE
 loadperf:
-    while(load_cmd.read(load_val) == false) 
+    while(load_cmd.read_nb(load_val) == false) 
         load_cnt++;
 compperf:
-    while(compress_cmd.read(compress_val) == false) 
+    while(compress_cmd.read_nb(compress_val) == false) 
         compress_cnt++;
 storeperf:
-    while(store_cmd.read(store_val) == false)
+    while(store_cmd.read_nb(store_val) == false)
         store_cnt++;
     perf_info[3*blockId + 0] = load_cnt;
     perf_info[3*blockId + 1] = compress_cnt;
