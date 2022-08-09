@@ -116,7 +116,7 @@ void PerformanceCheck(int16_t* perf_info, int blockId, int cmdId, hls::stream<in
 loadperf:
     while(cmd.read_nb(val) == false) 
         cnt++;
-    perf_info[blockId] = cnt;
+    perf_info[3*blockId + cmdId] = cnt;
 }
 #endif
 
@@ -210,29 +210,7 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData, int orgSize, hls
 }
 
 
-void CapsuleFuncs(uint8_t* original, uint8_t* compressed, int size, int i, int16_t* comp_info, int16_t* perf_info, hls::stream<int64_t>& cmd)
-{
-    /* local blocks */
-    uint8_t origBlock[BLOCK_SIZE];
-    uint8_t compBlock[BLOCK_SIZE];
 
-    int loadedSize = 0;
-    int encodeBlkSize = 0;
-    int encodeTotSize = 0;
-
-    /* declare timers for each step*/
-    hls::stream<int64_t> load_cmd;  
-    hls::stream<int64_t> compress_cmd; 
-    hls::stream<int64_t> store_cmd;
-
-    cmd.write(0);
-    loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i, load_cmd);
-    encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize, compress_cmd);
-    StoreData((uint8_t*)compBlock, (uint8_t*)compressed, comp_info, encodeBlkSize, i, store_cmd);
-    cmd.write(0);
-
-    return;
-}
 
 
 
@@ -253,13 +231,13 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* comp_info, i
 #endif
 
     /* local blocks */
-    // uint8_t origBlock[BLOCK_SIZE];
-    // uint8_t compBlock[BLOCK_SIZE];
+    uint8_t origBlock[BLOCK_SIZE];
+    uint8_t compBlock[BLOCK_SIZE];
 
     /* size in byte */
-    // int loadedSize = 0;
-    // int encodeBlkSize = 0;
-    // int encodeTotSize = 0;
+    int loadedSize = 0;
+    int encodeBlkSize = 0;
+    int encodeTotSize = 0;
 
     /* fill the dram buffer to avoid DMA failure */
     for (int i = 0; i < MAX_BLOCK; i++) 
@@ -269,10 +247,9 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* comp_info, i
     comp_info[0] = ceil((double)size/(double)(BLOCK_SIZE));
 
     /* declare timers for each step*/
-    // hls::stream<int64_t> load_cmd;  
-    // hls::stream<int64_t> compress_cmd; 
-    // hls::stream<int64_t> store_cmd;
-    hls::stream<int64_t> total_cmd;
+    hls::stream<int64_t> load_cmd;  
+    hls::stream<int64_t> compress_cmd; 
+    hls::stream<int64_t> store_cmd;
 
     /* Perform Load-Encode-Store */
     #if BURST
@@ -290,18 +267,21 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* comp_info, i
     int iter = size/(BLOCK_SIZE);
 rle_loop:
     for (int i = 0; i < iter; i++) {
-    // #pragma HLS DATAFLOW
-    //     loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i, load_cmd);
-    //     PerformanceCheck(perf_info, i, 0, load_cmd);
-    // #pragma HLS DATAFLOW
-    //     encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize, compress_cmd);
-    //     PerformanceCheck(perf_info, i, 1, compress_cmd);
-    // #pragma HLS DATAFLOW
-    //     StoreData((uint8_t*)compBlock, (uint8_t*)compressed, comp_info, encodeBlkSize, i, store_cmd);
-    //     PerformanceCheck(perf_info, i, 2, store_cmd);
+        {
     #pragma HLS DATAFLOW
-        CapsuleFuncs(original, compressed, size, i, comp_info, perf_info, total_cmd);
-        PerformanceCheck(perf_info, i, 0, total_cmd);
+        loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i, load_cmd);
+        PerformanceCheck(perf_info, i, 0, load_cmd);
+        }
+        {
+    #pragma HLS DATAFLOW
+        encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize, compress_cmd);
+        PerformanceCheck(perf_info, i, 1, compress_cmd);
+        }
+        {
+    #pragma HLS DATAFLOW
+        StoreData((uint8_t*)compBlock, (uint8_t*)compressed, comp_info, encodeBlkSize, i, store_cmd);
+        PerformanceCheck(perf_info, i, 2, store_cmd);
+        }
     }
     #endif
 
