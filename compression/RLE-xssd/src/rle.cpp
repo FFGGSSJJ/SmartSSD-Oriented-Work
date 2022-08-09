@@ -269,8 +269,10 @@ rle_loop:
         #pragma HLS DATAFLOW
             loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i, load_cmd);
             PerformanceCheck(perf_info, i, 0, load_cmd);
+        #pragma HLS DATAFLOW
             encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize, compress_cmd);
             PerformanceCheck(perf_info, i, 1, compress_cmd);
+        #pragma HLS DATAFLOW
             StoreData((uint8_t*)compBlock, (uint8_t*)compressed, comp_info, encodeBlkSize, i, store_cmd);
             PerformanceCheck(perf_info, i, 2, store_cmd);
         }
