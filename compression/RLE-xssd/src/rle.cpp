@@ -249,7 +249,7 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* comp_info, i
 #pragma HLS INTERFACE m_axi port = original bundle = gmem0
 #pragma HLS INTERFACE m_axi port = compressed bundle = gmem1
 #pragma HLS INTERFACE m_axi port = comp_info bundle = gmem2
-#pragma HLS INTERFACE m_axi port = perf_info bundle = gmem2
+#pragma HLS INTERFACE m_axi port = perf_info bundle = gmem3
 #endif
 
     /* local blocks */
