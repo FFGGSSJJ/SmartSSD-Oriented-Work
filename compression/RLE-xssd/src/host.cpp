@@ -210,7 +210,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     cout << "\n\nCompress Data: \n";
     for (int i = 0; i < compsize; i++)
         cout << ((uint8_t*)compressed)[i];
-    for (int i = 0; i < PAGE_SIZE; i++) {
+    for (int i = 0; i < (int)PAGE_SIZE; i++) {
         int16_t duration_cy = perfinfo[i];
         cout << (double)(duration_cy*1000)/Frequency << "ns; ";
     }
