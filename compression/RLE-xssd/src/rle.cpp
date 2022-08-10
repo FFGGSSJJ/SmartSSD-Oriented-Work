@@ -78,8 +78,8 @@ mem_bwt:
 int LoadData(uint8_t* in, uint8_t* out, int remain_size, int block_size, int blockId, hls::stream<int64_t>& cmd)
 {
     int size2read = remain_size > block_size ? block_size : remain_size;
-mem_rd:
     cmd.write(0);
+mem_rd:
     for (int i = 0; i < size2read; i++) {
     #pragma HLS PIPELINE II = 1
         out[blockId*block_size + i] = in[i];
