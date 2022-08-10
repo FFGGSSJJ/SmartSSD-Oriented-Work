@@ -112,11 +112,11 @@ void PerformanceCheck(int16_t* perf_info, int blockId, int cmdId, hls::stream<in
     int64_t cnt;
     int64_t val;
 
-    cnt = cmd.read();
+    cnt = cmd.read() + 1;
 loadperf:
     while(cmd.read_nb(val) == false) 
         cnt++;
-    perf_info[3*blockId + cmdId] = cnt;
+    perf_info[3*blockId + cmdId] = (int16_t)cnt;
 }
 #endif
 
@@ -269,7 +269,7 @@ rle_loop:
     for (int i = 0; i < iter; i++) {
         {
     #pragma HLS DATAFLOW
-        loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i, load_cmd);
+        LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i, load_cmd);
         PerformanceCheck(perf_info, i, 0, load_cmd);
         }
     //     {
