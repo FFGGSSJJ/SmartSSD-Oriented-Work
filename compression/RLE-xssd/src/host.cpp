@@ -212,7 +212,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
         cout << ((uint8_t*)compressed)[i];
     for (int i = 0; i < (int)PAGE_SIZE; i++) {
         int16_t duration_cy = perfinfo[i];
-        cout << (double)(duration_cy*1000)/Frequency << "ns; ";
+        cout << duration_cy << "cycles; ";
     }
 
     cout << "\nStart P2P to transfer Compressed Data from FPGA into SSD\n";
