@@ -79,7 +79,7 @@ template <int DUMMY = 0>
 void mem_load(int size, uint8_t* out, uint8_t* in, int block_size, int blockId)
 {
 mem_rd:
-    for (int i = 0; i < size2read; i++) {
+    for (int i = 0; i < size; i++) {
         out[blockId*block_size + i] = in[i];
     }
 }
