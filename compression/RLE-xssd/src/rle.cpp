@@ -80,6 +80,7 @@ void mem_load(int size, uint8_t* out, uint8_t* in, int block_size, int blockId)
 {
 mem_rd:
     for (int i = 0; i < size; i++) {
+#pragma HLS PIPELINE II = 1
         out[blockId*block_size + i] = in[i];
     }
 }
@@ -94,20 +95,21 @@ int LoadData(uint8_t* in, uint8_t* out, int remain_size, int block_size, int blo
     return size2read;
 }
 
+template <int DUMMY = 0>
 void StoreData(uint8_t* in, uint8_t* out, int16_t* comp_info, int encodeBlkSize, int blockId, hls::stream<int64_t>& store_cmd)
 {
     comp_info[blockId + 1] = encodeBlkSize;
     store_cmd.write(0);
 mem_wt:
     for (int i = 0; i < encodeBlkSize; i++) {
-    #pragma HLS PIPELINE II = 1
+#pragma HLS PIPELINE II = 1
         out[blockId*BLOCK_SIZE + i] = in[i];
     }
     store_cmd.write(0);
 
     /* to avoid DMA failure */
     for (int i = encodeBlkSize; i < BLOCK_SIZE; i++) {
-    #pragma HLS PIPELINE II = 1
+#pragma HLS PIPELINE II = 1
         out[blockId*BLOCK_SIZE + i] = 0;
     }
     
