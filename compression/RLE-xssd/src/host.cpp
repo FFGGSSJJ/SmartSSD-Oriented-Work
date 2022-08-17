@@ -221,9 +221,9 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     for (int i = 0; i < compsize; i++)
         cout << ((uint8_t*)compressed)[i];
     for (int i = 0; i < (int)10; i++) {
-        cout << (int)perfinfo0[i] << "load cycles; ";
-        cout << (int)perfinfo1[i] << "comp cycles; ";
-        cout << (int)perfinfo2[i] << "store cycles; \n";
+        cout << (int)perfinfo0[i] << " load cycles; ";
+        cout << (int)perfinfo1[i] << " comp cycles; ";
+        cout << (int)perfinfo2[i] << " store cycles; \n";
     }
 
     cout << "\nStart P2P to transfer Compressed Data from FPGA into SSD\n";

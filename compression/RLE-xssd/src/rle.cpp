@@ -100,7 +100,7 @@ void StoreData(uint8_t* in, uint8_t* out, int16_t* comp_info, int encodeBlkSize,
 {
     comp_info[blockId + 1] = encodeBlkSize;
     store_cmd.write(0);
-mem_wt:
+mem_wt0:
     for (int i = 0; i < encodeBlkSize; i++) {
 #pragma HLS PIPELINE II = 1
         out[blockId*BLOCK_SIZE + i] = in[i];
@@ -108,6 +108,7 @@ mem_wt:
     store_cmd.write(0);
 
     /* to avoid DMA failure */
+mem_wt1:
     for (int i = encodeBlkSize; i < BLOCK_SIZE; i++) {
 #pragma HLS PIPELINE II = 1
         out[blockId*BLOCK_SIZE + i] = 0;
@@ -122,7 +123,7 @@ void PerformanceCheck(int16_t* perf_info, int blockId, hls::stream<int64_t>& cmd
     int64_t val;
 
     cnt = cmd.read();
-loadperf:
+perf_loop:
     while(cmd.read_nb(val) == false) 
         cnt++;
     perf_info[blockId] = (int16_t)cnt;
@@ -252,6 +253,7 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* comp_info, i
     int encodeTotSize = 0;
 
     /* fill the dram buffer to avoid DMA failure */
+init_loop:
     for (int i = 0; i < MAX_BLOCK; i++) {
         comp_info[i] = 0;
         perf_info0[i] = 0;
@@ -282,13 +284,21 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* comp_info, i
     int iter = size/(BLOCK_SIZE);
 rle_loop:
     for (int i = 0; i < iter; i++) {
+{
 #pragma HLS DATAFLOW 
         loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i, load_cmd);
         PerformanceCheck(perf_info0, i, load_cmd);
+}
+{
+#pragma HLS DATAFLOW
         encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize, compress_cmd);
         PerformanceCheck(perf_info1, i, compress_cmd);
+}
+{
+#pragma HLS DATAFLOW
         StoreData((uint8_t*)compBlock, (uint8_t*)compressed, comp_info, encodeBlkSize, i, store_cmd);
         PerformanceCheck(perf_info2, i, store_cmd);
+}
     }
     #endif
 
