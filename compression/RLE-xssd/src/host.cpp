@@ -220,7 +220,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     cout << "\n\nCompress Data: \n";
     for (int i = 0; i < compsize; i++)
         cout << ((uint8_t*)compressed)[i];
-    for (int i = 0; i < (int)PAGE_SIZE; i++) {
+    for (int i = 0; i < (int)10; i++) {
         cout << (int)perfinfo0[i] << "load cycles; ";
         cout << (int)perfinfo1[i] << "comp cycles; ";
         cout << (int)perfinfo2[i] << "store cycles; \n";

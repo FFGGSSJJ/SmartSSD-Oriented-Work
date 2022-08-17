@@ -116,16 +116,16 @@ mem_wt:
 }
 
 template <int DUMMY = 0>
-void PerformanceCheck(int16_t* perf_info, int blockId, int cmdId, hls::stream<int64_t>& cmd)
+void PerformanceCheck(int16_t* perf_info, int blockId, hls::stream<int64_t>& cmd)
 {
     int64_t cnt;
     int64_t val;
 
-    cnt = cmd.read() + 1;
+    cnt = cmd.read();
 loadperf:
     while(cmd.read_nb(val) == false) 
         cnt++;
-    perf_info[3*blockId + cmdId] = (int16_t)cnt;
+    perf_info[blockId] = (int16_t)cnt;
 }
 #endif
 
@@ -143,6 +143,7 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData, int orgSize, hls
     
     /* Byte-level run check */
     cmd.write(0);
+comp_loop:
     for (int i = 1; i < orgSize; i++) {
     
         int8_t curr = orgData[i];
@@ -283,11 +284,11 @@ rle_loop:
     for (int i = 0; i < iter; i++) {
 #pragma HLS DATAFLOW 
         loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i, load_cmd);
-        PerformanceCheck(perf_info0, i, 0, load_cmd);
+        PerformanceCheck(perf_info0, i, load_cmd);
         encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize, compress_cmd);
-        PerformanceCheck(perf_info1, i, 1, compress_cmd);
+        PerformanceCheck(perf_info1, i, compress_cmd);
         StoreData((uint8_t*)compBlock, (uint8_t*)compressed, comp_info, encodeBlkSize, i, store_cmd);
-        PerformanceCheck(perf_info2, i, 2, store_cmd);
+        PerformanceCheck(perf_info2, i, store_cmd);
     }
     #endif
 
