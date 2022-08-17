@@ -248,10 +248,13 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* comp_info, i
     int encodeTotSize = 0;
 
     /* fill the dram buffer to avoid DMA failure */
-    for (int i = 0; i < MAX_BLOCK; i++) 
+    for (int i = 0; i < MAX_BLOCK; i++) {
         comp_info[i] = 0;
-    for (int i = 0; i < MAX_BLOCK*3; i++) 
-        perf_info[i] = 0;
+        perf_info0[i] = 0;
+        perf_info1[i] = 0;
+        perf_info2[i] = 0;
+    }
+    
     comp_info[0] = ceil((double)size/(double)(BLOCK_SIZE));
 
     /* declare timers for each step*/
