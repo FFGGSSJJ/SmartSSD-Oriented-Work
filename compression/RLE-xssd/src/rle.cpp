@@ -226,7 +226,7 @@ static int encodeByteLevel(uint8_t* orgData, uint8_t* compData, int orgSize, hls
 
 extern "C" {
 
-void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* comp_info, int16_t* perf_info)
+void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* comp_info, int16_t* perf_info0, int16_t* perf_info1, int16_t* perf_info2)
 {
 #if BURST
 #pragma HLS INTERFACE m_axi port = original bundle = gmem0 num_read_outstanding = 32 max_read_burst_length = 32 offset = slave
@@ -236,7 +236,6 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* comp_info, i
 #pragma HLS INTERFACE m_axi port = original bundle = gmem0
 #pragma HLS INTERFACE m_axi port = compressed bundle = gmem1
 #pragma HLS INTERFACE m_axi port = comp_info bundle = gmem2
-#pragma HLS INTERFACE m_axi port = perf_info bundle = gmem3 num_write_outstanding = 32
 #endif
 
     /* local blocks */
@@ -278,11 +277,11 @@ rle_loop:
     for (int i = 0; i < iter; i++) {
 #pragma HLS DATAFLOW 
         loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i, load_cmd);
-        PerformanceCheck(perf_info, i, 0, load_cmd);
+        PerformanceCheck(perf_info0, i, 0, load_cmd);
         encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize, compress_cmd);
-        PerformanceCheck(perf_info, i, 1, compress_cmd);
+        PerformanceCheck(perf_info1, i, 1, compress_cmd);
         StoreData((uint8_t*)compBlock, (uint8_t*)compressed, comp_info, encodeBlkSize, i, store_cmd);
-        PerformanceCheck(perf_info, i, 2, store_cmd);
+        PerformanceCheck(perf_info2, i, 2, store_cmd);
     }
     #endif
 
