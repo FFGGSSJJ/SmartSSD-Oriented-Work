@@ -1,0 +1,26 @@
+#
+# Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES, ALL RIGHTS RESERVED.
+#
+# This software product is a proprietary product of NVIDIA CORPORATION &
+# AFFILIATES (the "Company") and all right, title, and interest in and to the
+# software product, including all associated intellectual property rights, are
+# and shall remain exclusively with the Company.
+#
+# This software product is governed by the End User License Agreement
+# provided with the software product.
+#
+
+# This is a data file for the DOCA regex sample.
+# Below you can find example records to be parsed by the sample.
+
+Full name: Hanna Hanna
+Date of birth: 17-06-1998
+Address: 18 Garden Street
+
+Full name: Max Patter
+Date of birth: 11-07-2000
+Address: 15 Garden Street
+
+Full name: Robert Huebner
+Date of birth: 01.12.1958
+Address: 27 Garden Street
