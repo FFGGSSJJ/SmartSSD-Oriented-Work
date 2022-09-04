@@ -14,7 +14,6 @@
 #include "ap_int.h"
 #include <hls_stream.h>
 #include <cstdint>
-#include <iostream>
 #include <string.h>
 #include <cmath>
 using namespace::std;
@@ -76,7 +75,7 @@ mem_bwt:
 }
 #else /* Normal Memory IO*/
 template <int DUMMY = 0>
-void mem_load(int size, uint8_t* out, uint8_t* in, int block_size, int blockId)
+void mem_load(int32_t size, uint8_t* out, uint8_t* in, int block_size, int blockId)
 {
 mem_rd:
     for (int i = 0; i < size; i++) {
@@ -86,64 +85,52 @@ mem_rd:
 }
 
 template <int DUMMY = 0>
-int LoadData(uint8_t* in, uint8_t* out, int remain_size, int block_size, int blockId, hls::stream<int64_t>& cmd)
+void LoadData(uint8_t* in, uint8_t* out, int remain_size, int block_size, int blockId, hls::stream<int32_t, 2>& loadedSize)
 {
-    int size2read = remain_size > block_size ? block_size : remain_size;
-    cmd.write(0);
+    int32_t size2read = remain_size > block_size ? block_size : remain_size;
     mem_load(size2read, out, in, block_size, blockId);
-    cmd.write(0);
-    return size2read;
+    loadedSize << size2read;
+    return;
 }
 
 template <int DUMMY = 0>
-void StoreData(uint8_t* in, uint8_t* out, int16_t* comp_info, int encodeBlkSize, int blockId, hls::stream<int64_t>& store_cmd)
+void StoreData(uint8_t* in, uint8_t* out, int16_t* comp_info, hls::stream<int32_t, 2>& encodeBlkSize, int blockId)
 {
-    comp_info[blockId + 1] = encodeBlkSize;
-    store_cmd.write(0);
+    int32_t encoded = encodeBlkSize.read();
+    comp_info[blockId + 1] = encoded;
 mem_wt0:
-    for (int i = 0; i < encodeBlkSize; i++) {
+    for (int i = 0; i < encoded; i++) {
 #pragma HLS PIPELINE II = 1
         out[blockId*BLOCK_SIZE + i] = in[i];
     }
-    store_cmd.write(0);
 
     /* to avoid DMA failure */
 mem_wt1:
-    for (int i = encodeBlkSize; i < BLOCK_SIZE; i++) {
-#pragma HLS PIPELINE II = 1
+    for (int i = encoded; i < BLOCK_SIZE; i++) {
+#pragma HLS UNROLL factor=BLOCK_SIZE
         out[blockId*BLOCK_SIZE + i] = 0;
     }
     
-}
-
-template <int DUMMY = 0>
-void PerformanceCheck(int16_t* perf_info, int blockId, hls::stream<int64_t>& cmd)
-{
-    int64_t cnt;
-    int64_t val;
-
-    cnt = cmd.read();
-perf_loop:
-    while(cmd.read_nb(val) == false) 
-        cnt++;
-    perf_info[blockId] = (int16_t)cnt;
 }
 #endif
 
 
 
 /* Compression */
-static int encodeByteLevel(uint8_t* orgData, uint8_t* compData, int orgSize, hls::stream<int64_t>& cmd)
+static void encodeByteLevel(uint8_t* orgData, uint8_t* compData, hls::stream<int32_t, 2>& loadedSize, hls::stream<int32_t, 2>& encodedBlkSize)
 {
     if (orgData == NULL || compData == NULL)    return -1;
 
     /* set prev byte */
     int8_t prev = orgData[0];
     uint8_t count = 0;
-    uint32_t encodelen = 0;
+    int32_t encodelen = 0;
+
+    /* get the size of blk to be encoded */
+    int32_t orgSize = 0;
+    loadedSize >> orgSize;
     
     /* Byte-level run check */
-    cmd.write(0);
 comp_loop:
     for (int i = 1; i < orgSize; i++) {
     
@@ -215,9 +202,10 @@ comp_loop:
         compData[encodelen - count] = count;
         ++encodelen;
     }
-    cmd.write(0);
 
-    return encodelen;
+    /* update the encoded len into the stream */
+    encodedBlkSize << encodelen;
+    return;
 }
 
 
@@ -238,9 +226,6 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* comp_info, i
 #pragma HLS INTERFACE m_axi port = original bundle = gmem0
 #pragma HLS INTERFACE m_axi port = compressed bundle = gmem1
 #pragma HLS INTERFACE m_axi port = comp_info bundle = gmem2
-#pragma HLS INTERFACE m_axi port = perf_info0 bundle = gmem3
-#pragma HLS INTERFACE m_axi port = perf_info1 bundle = gmem4
-#pragma HLS INTERFACE m_axi port = perf_info2 bundle = gmem5
 #endif
 
     /* local blocks */
@@ -248,25 +233,18 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* comp_info, i
     uint8_t compBlock[BLOCK_SIZE];
 
     /* size in byte */
-    int loadedSize = 0;
-    int encodeBlkSize = 0;
-    int encodeTotSize = 0;
+    hls::stream<int32_t, 2> loadedSize;
+    hls::stream<int32_t, 2> encodedBlkSize;
+    hls::stream<int32_t, 2> encodedTotSize;
 
     /* fill the dram buffer to avoid DMA failure */
 init_loop:
     for (int i = 0; i < MAX_BLOCK; i++) {
+#pragma HLS UNROLL factor=MAX_BLOCK
         comp_info[i] = 0;
-        perf_info0[i] = 0;
-        perf_info1[i] = 0;
-        perf_info2[i] = 0;
     }
     
     comp_info[0] = ceil((double)size/(double)(BLOCK_SIZE));
-
-    /* declare timers for each step*/
-    hls::stream<int64_t> load_cmd; 
-    hls::stream<int64_t> compress_cmd; 
-    hls::stream<int64_t> store_cmd;
 
     /* Perform Load-Encode-Store */
     #if BURST
@@ -285,12 +263,9 @@ init_loop:
 rle_loop:
     for (int i = 0; i < iter; i++) {
 #pragma HLS DATAFLOW 
-        loadedSize = LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i, load_cmd);
-        PerformanceCheck(perf_info0, i, load_cmd);
-        encodeBlkSize = encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize, compress_cmd);
-        PerformanceCheck(perf_info1, i, compress_cmd);
-        StoreData((uint8_t*)compBlock, (uint8_t*)compressed, comp_info, encodeBlkSize, i, store_cmd);
-        PerformanceCheck(perf_info2, i, store_cmd);
+        LoadData((uint8_t*)original, (uint8_t*)origBlock, size - i*BLOCK_SIZE, BLOCK_SIZE, i, loadedSize);
+        encodeByteLevel((uint8_t*)origBlock, (uint8_t*)compBlock, loadedSize, encodedBlkSize);
+        StoreData((uint8_t*)compBlock, (uint8_t*)compressed, comp_info, encodedBlkSize, i);
     }
     #endif
 
