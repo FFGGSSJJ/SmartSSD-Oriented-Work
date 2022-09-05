@@ -85,14 +85,8 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
 
     /* Allocate space to store information of compression */
     int16_t* compinfo = (int16_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
-    int16_t* perfinfo0 = (int16_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
-    int16_t* perfinfo1 = (int16_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
-    int16_t* perfinfo2 = (int16_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
     for (uint32_t i = 0; i < PAGE_SIZE/sizeof(int16_t); i++) {
         compinfo[i] = 0;
-        perfinfo0[i] = 0;
-        perfinfo1[i] = 0;
-        perfinfo2[i] = 0;
     }
 
     /* Allocate global buffers in the global memory of device*/
@@ -102,9 +96,6 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     cl::Buffer origData(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, (size_t)filesize, &outExt, &err);
     cl::Buffer compData(context, CL_MEM_WRITE_ONLY | CL_MEM_EXT_PTR_XILINX, (size_t)filesize, &outExt, &err);
     cl::Buffer infoBuf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, PAGE_SIZE, (void*)compinfo, &err);
-    cl::Buffer perf0Buf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, PAGE_SIZE, (void*)perfinfo0, &err);
-    cl::Buffer perf1Buf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, PAGE_SIZE, (void*)perfinfo1, &err);
-    cl::Buffer perf2Buf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, PAGE_SIZE, (void*)perfinfo2, &err);
 
     /* Map p2p buffers */
     std::cout << "\nMap P2P device buffers to host access pointers\n" << std::endl;
@@ -133,9 +124,6 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     OCL_CHECK(err, err = kernel.setArg(1, compData));
     OCL_CHECK(err, err = kernel.setArg(2, filesize));
     OCL_CHECK(err, err = kernel.setArg(3, infoBuf));
-    OCL_CHECK(err, err = kernel.setArg(4, perf0Buf));
-    OCL_CHECK(err, err = kernel.setArg(5, perf1Buf));
-    OCL_CHECK(err, err = kernel.setArg(6, perf2Buf));
 
     /* Open file */
     /* O_DIRECT: 
@@ -220,11 +208,6 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     cout << "\n\nCompress Data: \n";
     for (int i = 0; i < compsize; i++)
         cout << ((uint8_t*)compressed)[i];
-    for (int i = 0; i < (int)10; i++) {
-        cout << (int)perfinfo0[i] << " load cycles; ";
-        cout << (int)perfinfo1[i] << " comp cycles; ";
-        cout << (int)perfinfo2[i] << " store cycles; \n";
-    }
 
     cout << "\nStart P2P to transfer Compressed Data from FPGA into SSD\n";
     cout << "Compressed Size = " << xcl::convert_size(compsize) << "Bufsize: " << xcl::convert_size(bufsize) << endl;
@@ -248,9 +231,6 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
 
     /* free allocated memory */
     free(compinfo);
-    free(perfinfo0);
-    free(perfinfo1);
-    free(perfinfo2);
 
     return EXIT_SUCCESS;
 }

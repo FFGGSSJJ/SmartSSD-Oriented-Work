@@ -216,7 +216,7 @@ comp_loop:
 
 extern "C" {
 
-void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* comp_info, int16_t* perf_info0, int16_t* perf_info1, int16_t* perf_info2)
+void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* comp_info)
 {
 #if BURST
 #pragma HLS INTERFACE m_axi port = original bundle = gmem0 num_read_outstanding = 32 max_read_burst_length = 32 offset = slave
