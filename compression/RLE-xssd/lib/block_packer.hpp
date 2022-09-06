@@ -131,25 +131,54 @@ size_stream_loop:
 
 
 
-
-
 /**
- * @brief convert global memory to local stream
+ * @brief load global memory to local stream
  * 
  * @tparam DATAWIDTH 
  * @param in 
  * @param outStream 
  */
 template <int DATAWIDTH = 512>
-void mem2stream(const uint512_t* in,
+void mem2stream(const ap_uint<DATAWIDTH>* in,
                 uint32_t* comp_info, 
                 hls::stream<ap_uint<DATAWIDTH> >& outStream
                 hls::stream<uint32_t>& cinfo)
 {
+    uint32_t block_num = comp_info[0]; 
 
+    /* convert into stream */
+m2s_loop:
+    for (uint32_t i = 0; i < block_num; i++) {
+        for (uint32_t j = 0; j < ALIGN_PACK; j++) {
+#pragma HLS PIPELINE II = 1
+            outStream << in[i*ALIGN_PACK + j];
+        }
+        cinfo << comp_info[i+1];
+    }
+
+    /* push back the end val */
+    outStream << 0;
+    cinfo << 0;
     return;
 }
 
+
+/**
+ * @brief upload local stream to global memory
+ * 
+ * @tparam DATAWIDTH 
+ * @param inStream 
+ * @param pinfo
+ * @param out 
+ */
+template<int DATAWIDTH = 512>
+void stream2mem(hls::stream<ap_uint<DATAWIDTH> >& inStream, 
+                hls::stream<uint32_t>& pinfo
+                ap_uint<DATAWIDTH>* out)
+{
+
+    return;
+}
 
 
 
