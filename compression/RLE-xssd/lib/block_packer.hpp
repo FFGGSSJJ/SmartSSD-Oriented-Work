@@ -14,26 +14,31 @@
  * limitations under the License.
  *
  */
-#ifndef _XFCOMPRESSION_BLOCK_PACKER_HPP_
-#define _XFCOMPRESSION_BLOCK_PACKER_HPP_
+#ifndef _RLE_BLOCK_PACKER_HPP_
+#define _RLE_BLOCK_PACKER_HPP_
 
 /**
  * @file block_packer.hpp
  * @brief Header for module used in packer kernels.
  *
- * This file is part of Vitis Data Compression Library.
+ * This file is modified based on part of Vitis Data Compression Library.
  */
 
 #include "hls_stream.h"
-
 #include <ap_int.h>
 #include <assert.h>
 #include <stdint.h>
 
 #include "block_packer.hpp"
 
-namespace xf {
-namespace compression {
+
+// Self defined Macros
+#define BLOCK_SIZE      8192    // 8KB, be synced with BLOCK_SIZE in rle.cpp
+#define MAX_BLOCK_NUM   64      // be synced with MAX_BLOCK in rle.cpp
+#define PACK_SIZE       512
+#define ALIGN_PACK      BLOCK_SIZE/PACK_SIZE
+typedef ap_uint<PACK_SIZE> uint512_t;
+
 
 /**
  * @brief Compression Packer module packs the compressed data.
@@ -64,7 +69,7 @@ void blockPacker(hls::stream<ap_uint<DATAWIDTH> >& inStream,
     uint32_t c_parallelByte = DATAWIDTH / c_byteSize;
 
     // Local Buffer for shift operation
-    ap_uint<DATAWIDTH* 2> lcl_buffer = 0;
+    ap_uint<DATAWIDTH * 2> lcl_buffer = 0;
 
 // Loop for processing each compressed size block
 size_stream_loop:
@@ -77,7 +82,7 @@ size_stream_loop:
         uint32_t alignedBytes = size - leftBytes;
 
         // One-time multiplication calculation for index
-        prodLbuf = lbuf_idx * c_byteSize;
+        prodLbuf = lbuf_idx * c_byteSize; 
 
     loop_aligned:
         for (uint32_t i = 0; i < alignedBytes; i += c_parallelByte) {
@@ -123,6 +128,30 @@ size_stream_loop:
     outCompressedSize << endSizeCnt;
 }
 
-} // namespace compression
-} // namespace xf
-#endif // _XFCOMPRESSION_BLOCK_PACKER_HPP_
+
+
+
+
+
+/**
+ * @brief convert global memory to local stream
+ * 
+ * @tparam DATAWIDTH 
+ * @param in 
+ * @param outStream 
+ */
+template <int DATAWIDTH = 512>
+void mem2stream(const uint512_t* in,
+                uint32_t* comp_info, 
+                hls::stream<ap_uint<DATAWIDTH> >& outStream
+                hls::stream<uint32_t>& cinfo)
+{
+
+    return;
+}
+
+
+
+
+
+#endif // _RLE_BLOCK_PACKER_HPP_

@@ -23,11 +23,11 @@ using namespace::std;
 #define BytesPerNum 8
 #define BytesPerKB  1024
 #define BytesPerMB  1024*1024
-#define PAGE_SIZE   4*BytesPerKB
-#define BLOCK_SIZE  1024*8      // 1024 * 8 Byte
-#define PAGE_SIZE   1024*4      // 1024 * 4 Byte
-#define BURST_SIZE  32          // 32 Byte
-#define MAX_BLOCK   PAGE_SIZE/2 // 2048
+#define BLOCK_SIZE  BytesPerKB*8        // 1024 * 8 Byte = 8 KB
+#define PAGE_SIZE   BytesPerKB*4        // 1024 * 4 Byte = 4 KB
+#define BURST_SIZE  32                  // 32 Byte
+#define MAX_BLOCK   64                  // 64 => 
+#define MAX_INPUT_SIZE MAX_BLOCK*BLOCK_SIZE // 64*8KB = 512KB
 
 
 
@@ -244,7 +244,8 @@ init_loop:
         comp_info[i] = 0;
     }
     
-    comp_info[0] = ceil((double)size/(double)(BLOCK_SIZE));
+    /* the first stores the number of block compressed */
+    comp_info[0] = (int16_t)ceil((double)size/(double)(BLOCK_SIZE));
 
     /* Perform Load-Encode-Store */
     #if BURST
