@@ -16,7 +16,9 @@ This research lasts for 3 stages:
 
 - `./data`: dataset used to test encoding program
 
-- `./docs/build.md`: introduction on how to build and simulate/run the program.
+> Refer to `docs` if you want to try programs in this project
+
+- `./docs/build.md`: instructions on how to build and simulate/run the program.
 
 - `./docs/issues.md`: issues encountered during development
 

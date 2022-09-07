@@ -116,7 +116,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     cmdq.finish();
 
     /* Initialize the kernels */
-    std::string krn_name = "rle";
+    std::string krn_name = "rle_comp";
     OCL_CHECK(err, kernel = cl::Kernel(program, krn_name.c_str(), &err));
 
     /* Set some args */

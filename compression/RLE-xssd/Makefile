@@ -72,7 +72,7 @@ RESULT_STRING = TEST PASSED
 
 VPP := v++
 VPP_PFLAGS :=
-CMD_ARGS = -x $(BUILD_DIR)/rle.xclbin -f ./data/sample.txt
+CMD_ARGS = -x $(BUILD_DIR)/rle.xclbin
 
 include $(XF_PROJ_ROOT)/common/includes/opencl/opencl.mk
 include config.mk
@@ -107,7 +107,7 @@ EMCONFIG_DIR = $(TEMP_DIR)
 
 ############################## Declaring Binary Containers ##############################
 BINARY_CONTAINERS += $(BUILD_DIR)/rle.xclbin
-BINARY_CONTAINER_rle_OBJS += $(TEMP_DIR)/rle.xo
+BINARY_CONTAINER_rle_OBJS += $(TEMP_DIR)/rle_comp.xo
 BINARY_CONTAINER_rle_OBJS += $(TEMP_DIR)/rle_decomp.xo
 ############################## Setting Targets ##############################
 CP = cp -rf
@@ -125,9 +125,9 @@ build: check-vitis check-device $(BINARY_CONTAINERS)
 xclbin: build
 
 ############################## Setting Rules for Binary Containers (Building Kernels) ##############################
-$(TEMP_DIR)/rle.xo: src/rle.cpp
+$(TEMP_DIR)/rle_comp.xo: src/rle_comp.cpp
 	mkdir -p $(TEMP_DIR)
-	$(VPP) $(VPP_FLAGS) -c -k rle --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
+	$(VPP) $(VPP_FLAGS) -c -k rle_comp --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
 $(TEMP_DIR)/rle_decomp.xo: src/rle_decomp.cpp
 	mkdir -p $(TEMP_DIR)
 	$(VPP) $(VPP_FLAGS) -c -k rle_decomp --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
