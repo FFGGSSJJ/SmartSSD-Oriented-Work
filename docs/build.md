@@ -27,6 +27,8 @@ source /opt/xilinx/xrt/setup.sh
 
 - `MK_PATH` need to be set correctly. In my program, I set it as `./`.
 - `COMMON_REPO`: the directory `common` contains the necessary libraries for `xrt` and `ocl`. You need to put the folder according to the `MK_PATH` you set. In my case, I need to put it together in the same level with my `src` code. 
+  - For now I have `common` directory in all program folders, which is silly, and I will keep only one `common` in top directory in the future. 
+  - I have removed `common` in `matrixmul` ,`compression/RLE-xdram`, `transfertest/BW_Opt`, `transfertest/p2p_simple`.
 - `EXECUTABLE`: modify to match your exe file
 - `CMD_ARGS`: modify to match your kernel set name (`.xclbin`)
 - `HOST_SRCS`: modify to match your host file
