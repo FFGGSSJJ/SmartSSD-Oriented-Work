@@ -1,6 +1,6 @@
 # Build Instruction
 
-- Command Line Instructions
+- `Command Line` and `Makefile` Instructions
 - Develop and build in `janux03`
 - Deploy in `janux00`
 - Detailed programming notes can be viewed: https://ffggssjj.notion.site/b50fc812d8f14ed2bd1ad5cd817b1984?v=484a0e8656714bc8b7a610f3c4bac04d
@@ -26,7 +26,7 @@ source /opt/xilinx/xrt/setup.sh
 ### 1. Variables
 
 - `MK_PATH` need to be set correctly. In my program, I set it as `./`.
-- `COMMON_REPO`: the directory `common` contains the necessary libraries for `xrt` and. `ocl`. You need to put the folder according to the `MK_PATH` you set. In my case, I need to put it together in the same level with my `src` code. 
+- `COMMON_REPO`: the directory `common` contains the necessary libraries for `xrt` and `ocl`. You need to put the folder according to the `MK_PATH` you set. In my case, I need to put it together in the same level with my `src` code. 
 - `EXECUTABLE`: modify to match your exe file
 - `CMD_ARGS`: modify to match your kernel set name (`.xclbin`)
 - `HOST_SRCS`: modify to match your host file
