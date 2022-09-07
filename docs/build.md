@@ -7,7 +7,7 @@
 
 
 
-### Before Build
+## Before Build
 
 ```shell
 ## In janux03 ##
@@ -21,21 +21,72 @@ source /opt/xilinx/xrt/setup.sh
 
 <hr />
 
-### To Build a Application
+## Makefile
 
-***Hardware Emulation***
+### 1. Variables
+
+- `MK_PATH` need to be set correctly. In my program, I set it as `./`.
+- `COMMON_REPO`: the directory `common` contains the necessary libraries for `xrt` and. `ocl`. You need to put the folder according to the `MK_PATH` you set. In my case, I need to put it together in the same level with my `src` code. 
+- `EXECUTABLE`: modify to match your exe file
+- `CMD_ARGS`: modify to match your kernel set name (`.xclbin`)
+- `HOST_SRCS`: modify to match your host file
+
+### 2. Kernels
+
+- Declare Binary Containers first
+
+```makefile
+## One binary containers (.xclbin) can contain several kernels (.xo)
+BINARY_CONTAINERS += $(BUILD_DIR)/<kernel_set_name>.xclbin
+BINARY_CONTAINER_<kernel_set_name>_OBJS += $(TEMP_DIR)/<kernel_1_name>.xo
+BINARY_CONTAINER_<kernel_set_name>_OBJS += $(TEMP_DIR)/<kernel_2_name>.xo
+```
+
+- Set compile rules for Binary Containers
+
+```makefile
+## rule for .xo
+$(TEMP_DIR)/<kernel_name>.xo: src/<kernel_name>.cpp
+	mkdir -p $(TEMP_DIR)
+	$(VPP) $(VPP_FLAGS) -c -k <kernel_name> --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
+	
+## rule for .xclbin
+$(BUILD_DIR)/<kernel_set_name>.xclbin: $(BINARY_CONTAINER_<kernel_set_name>_OBJS)
+	mkdir -p $(BUILD_DIR)
+	$(VPP) $(VPP_FLAGS) -l $(VPP_LDFLAGS) --temp_dir $(TEMP_DIR)-o'$(BUILD_DIR)/<kernel_set_name>.link.xclbin' $(+)
+	$(VPP) -p $(BUILD_DIR)/<kernel_set_name>.link.xclbin -t $(TARGET) --platform $(PLATFORM) --package.out_dir $(PACKAGE_OUT) -o $(BUILD_DIR)/<kernel_set_name>.xclbin
+```
+
+### 3. Host
+
+```makefile
+$(EXECUTABLE): $(HOST_SRCS) | check-xrt
+		$(CXX) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
+
+emconfig:$(EMCONFIG_DIR)/emconfig.json
+$(EMCONFIG_DIR)/emconfig.json:
+	emconfigutil --platform $(PLATFORM) --od $(EMCONFIG_DIR)
+```
+
+
+
+<hr />
+
+## To Build a Application
+
+### ***Hardware Emulation***
 
 ```shell
 make all TARGER=hw_emu PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
 ```
 
-***Software Emulation***
+### ***Software Emulation***
 
 ```shell
 make all TARGER=sw_emu PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
 ```
 
-***Hardware***
+### ***Hardware***
 
 ```shell
 make all TARGER=hw PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
@@ -43,15 +94,15 @@ make all TARGER=hw PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
 
 <hr />
 
-### To Run a Application on Emulation
+## To Run a Application on Emulation
 
-***Hardware Emulation***
+### ***Hardware Emulation***
 
 ```shell
 make run TARGER=hw_emu PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1 
 ```
 
-***Software Emulation***
+### ***Software Emulation***
 
 ```shell
 make run TARGER=sw_emu PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
@@ -59,7 +110,7 @@ make run TARGER=sw_emu PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
 
 <hr />
 
-### To Run a Application on Hardware
+## To Run a Application on Hardware
 
 ```shell
 ## Make sure the environment is sourced ##

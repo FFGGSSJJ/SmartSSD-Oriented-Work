@@ -173,10 +173,21 @@ m2s_loop:
  */
 template<int DATAWIDTH = 512>
 void stream2mem(hls::stream<ap_uint<DATAWIDTH> >& inStream, 
-                hls::stream<uint32_t>& pinfo
+                hls::stream<uint32_t>& pinfo,
+                hls::stream<bool>& pinfoEos,
+                uint32_t* pack_info,
                 ap_uint<DATAWIDTH>* out)
 {
+s2m_loop:
+    for (bool i = pinfoEos.read(), int id = 0; i != 1; i = pinfoEos.read(), id++) {
+#pragma HLS PIPELINE II = 1 // not sure if this could work
+        out[id] = inStream.read();
+    } 
 
+    /* upload the size */
+    pack_info[0] = pinfo.read();
+
+    /* push back the end val */
     return;
 }
 
