@@ -81,7 +81,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
 {
     int err;
     int nvmeFd = -1;
-    cl::Kernel kernel;
+    cl::Kernel comp_kernel, pack_kernel;
 
     /* Allocate space to store information of compression */
     int16_t* compinfo = (int16_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
@@ -115,15 +115,15 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
                                             &err); // error code
     cmdq.finish();
 
-    /* Initialize the kernels */
+    /* Initialize the comp_kernels */
     std::string krn_name = "rle_comp";
-    OCL_CHECK(err, kernel = cl::Kernel(program, krn_name.c_str(), &err));
+    OCL_CHECK(err, comp_kernel = cl::Kernel(program, krn_name.c_str(), &err));
 
     /* Set some args */
-    OCL_CHECK(err, err = kernel.setArg(0, origData));
-    OCL_CHECK(err, err = kernel.setArg(1, compData));
-    OCL_CHECK(err, err = kernel.setArg(2, filesize));
-    OCL_CHECK(err, err = kernel.setArg(3, infoBuf));
+    OCL_CHECK(err, err = comp_kernel.setArg(0, origData));
+    OCL_CHECK(err, err = comp_kernel.setArg(1, compData));
+    OCL_CHECK(err, err = comp_kernel.setArg(2, filesize));
+    OCL_CHECK(err, err = comp_kernel.setArg(3, infoBuf));
 
     /* Open file */
     /* O_DIRECT: 
@@ -132,7 +132,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
      * the file offset, and the user memory buffer is 4K bytes 
      * refer to https://www.ibm.com/docs/en/spectrum-scale/5.0.5?topic=applications-considerations-use-direct-io-o-direct
      */
-    nvmeFd = open(filepath.c_str(), O_RDWR | O_DIRECT);
+    nvmeFd = open(filepath.c_str(), O_CREAT | O_RDWR | O_DIRECT, 0777);
     if (nvmeFd < 0) {
         cout << "Open Failed\n";
         return EXIT_FAILURE;
@@ -168,7 +168,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     /* Launch the kernels */
     cout << "\nLaunch the RLE Compression kernel" << endl;
     std::chrono::high_resolution_clock::time_point compress_start = std::chrono::high_resolution_clock::now();
-    OCL_CHECK(err, err = cmdq.enqueueTask(kernel));
+    OCL_CHECK(err, err = cmdq.enqueueTask(comp_kernel));
     cmdq.finish();
     std::chrono::high_resolution_clock::time_point compress_end = std::chrono::high_resolution_clock::now();
 
@@ -179,7 +179,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     cout << "Kernel execution time: " << dnsduration << "ns = " << dsduration << "s\n";
 
     /* Transfer compression information and performance buffer */
-    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({infoBuf, perf0Buf, perf1Buf, perf2Buf}, CL_MIGRATE_MEM_OBJECT_HOST));
+    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({infoBuf}, CL_MIGRATE_MEM_OBJECT_HOST));
     cmdq.finish();
 
     /* Open file */
@@ -188,7 +188,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
      * the alignment requirement for the number of bytes, 
      * the file offset, and the user memory buffer is 4K bytes 
      */
-    nvmeFd = open(respath.c_str(), O_RDWR | O_DIRECT);
+    nvmeFd = open(respath.c_str(), O_CREAT | O_RDWR | O_DIRECT, 0777);
     if (nvmeFd < 0) {
         cout << "Open Failed\n";
         return EXIT_FAILURE;
