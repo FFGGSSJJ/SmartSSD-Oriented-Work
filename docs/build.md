@@ -79,19 +79,19 @@ $(EMCONFIG_DIR)/emconfig.json:
 ### ***Hardware Emulation***
 
 ```shell
-make all TARGER=hw_emu PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
+make all TARGET=hw_emu PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
 ```
 
 ### ***Software Emulation***
 
 ```shell
-make all TARGER=sw_emu PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
+make all TARGET=sw_emu PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
 ```
 
 ### ***Hardware***
 
 ```shell
-make all TARGER=hw PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
+make all TARGET=hw PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
 ```
 
 <hr />
@@ -101,13 +101,13 @@ make all TARGER=hw PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
 ### ***Hardware Emulation***
 
 ```shell
-make run TARGER=hw_emu PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1 
+make run TARGET=hw_emu PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1 
 ```
 
 ### ***Software Emulation***
 
 ```shell
-make run TARGER=sw_emu PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
+make run TARGET=sw_emu PLATFORM=xilinx_u2_gen3x4_xdma_gc_2_202110_1
 ```
 
 <hr />
