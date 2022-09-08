@@ -109,6 +109,7 @@ EMCONFIG_DIR = $(TEMP_DIR)
 BINARY_CONTAINERS += $(BUILD_DIR)/rle.xclbin
 BINARY_CONTAINER_rle_OBJS += $(TEMP_DIR)/rle_comp.xo
 BINARY_CONTAINER_rle_OBJS += $(TEMP_DIR)/rle_decomp.xo
+BINARY_CONTAINER_rle_OBJS += $(TEMP_DIR)/rle_packer.xo
 ############################## Setting Targets ##############################
 CP = cp -rf
 
@@ -125,6 +126,9 @@ build: check-vitis check-device $(BINARY_CONTAINERS)
 xclbin: build
 
 ############################## Setting Rules for Binary Containers (Building Kernels) ##############################
+$(TEMP_DIR)/rle_packer.xo: src/rle_packer.cpp
+	mkdir -p $(TEMP_DIR)
+	$(VPP) $(VPP_FLAGS) -c -k rle_packer --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
 $(TEMP_DIR)/rle_comp.xo: src/rle_comp.cpp
 	mkdir -p $(TEMP_DIR)
 	$(VPP) $(VPP_FLAGS) -c -k rle_comp --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'

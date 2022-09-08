@@ -94,13 +94,31 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     /* Allocate global buffers in the global memory of device*/
     cl_mem_ext_ptr_t outExt;
     outExt = {XCL_MEM_EXT_P2P_BUFFER, nullptr, 0};
-    std::cout << "Allocate global buffer in FPGA\n";
+    std::cout << "Allocate global buffer in device\n";
+
+    /* K1 input: this buffer stores the original data to be encode 
+       p2p buffer: transfer data from ssd directly to device */
     cl::Buffer origData(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, (size_t)filesize, &outExt, &err);
-    cl::Buffer compData(context, CL_MEM_WRITE_ONLY | CL_MEM_EXT_PTR_XILINX, (size_t)filesize, &outExt, &err);
-    cl::Buffer infoBuf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, PAGE_SIZE, (void*)compinfo, &err);
+
+    /* K1 output: this buffer stores the compressed data output from comp_kernel /written by device 
+       K2 input: this buffer will also uses as the input into pack_kernel */
+    cl::Buffer compData(context, CL_MEM_READ_WRITE, (size_t)filesize, NULL, &err);
+
+    /* K2 output: this buffer stores the packed data output from pack_kernel /written by device 
+       p2p buffer: transfer data from device directly to ssd */
+    cl::Buffer packData(context, CL_MEM_WRITE_ONLY | CL_MEM_EXT_PTR_XILINX, (size_t)filesize, &outExt, &err);
+
+    /* K1 output: this buffer stores the compression info output from comp_kernel
+       K2 input: this buffer will be used as the input into pack_kernel 
+       Host accessible: host can read/write this buffer through host pointer */
+    cl::Buffer cInfo(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, PAGE_SIZE, (void*)compinfo, &err);
+
+    /* K2 ouput: this buffer stores the pack info output from pack_kernel 
+       Host accessible: host can read/write this buffer through host pointer */
+    cl::Buffer pInfo(context, CL_MEM_USE_HOST_P | CL_MEM_WRITE_ONLY, PAGE_SIZE, (void*)packinfo, &err);
 
     /* Map p2p buffers */
-    std::cout << "\nMap P2P device buffers to host access pointers\n" << std::endl;
+    std::cout << "\nMap P2P device buffers to host accessible pointers\n" << std::endl;
     void* original = cmdq.enqueueMapBuffer( origData,
                                             CL_TRUE,                    // blocking call
                                             CL_MAP_WRITE | CL_MAP_READ, // Indicates we will be writing
@@ -108,7 +126,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
                                             filesize,                   // size in bytes
                                             nullptr, nullptr,
                                             &err); // error code
-    void* compressed = cmdq.enqueueMapBuffer( compData,
+    void* compressed = cmdq.enqueueMapBuffer( packData,
                                             CL_TRUE,                    // blocking call
                                             CL_MAP_READ | CL_MAP_WRITE, // Indicates we will be writing
                                             0,                          // buffer offset
@@ -120,12 +138,14 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     /* Initialize the comp_kernels */
     std::string krn_name = "rle_comp";
     OCL_CHECK(err, comp_kernel = cl::Kernel(program, krn_name.c_str(), &err));
+    krn_name = "rle_pack";
+    OCL_CHECK(err, pack_kernel = cl::Kernel(program, krn_name.c_str(), &err));
 
     /* Set some args */
     OCL_CHECK(err, err = comp_kernel.setArg(0, origData));
     OCL_CHECK(err, err = comp_kernel.setArg(1, compData));
     OCL_CHECK(err, err = comp_kernel.setArg(2, filesize));
-    OCL_CHECK(err, err = comp_kernel.setArg(3, infoBuf));
+    OCL_CHECK(err, err = comp_kernel.setArg(3, cInfo));
 
     /* Open file */
     /* O_DIRECT: 
@@ -181,7 +201,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     cout << "Kernel execution time: " << dnsduration << "ns = " << dsduration << "s\n";
 
     /* Transfer compression information and performance buffer */
-    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({infoBuf}, CL_MIGRATE_MEM_OBJECT_HOST));
+    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({cInfo}, CL_MIGRATE_MEM_OBJECT_HOST));
     cmdq.finish();
 
     /* Open file */
@@ -264,7 +284,7 @@ int ssd_decompress(cl::Context context, cl::CommandQueue cmdq, cl::Program progr
     cl_mem_ext_ptr_t outExt;
     outExt = {XCL_MEM_EXT_P2P_BUFFER, nullptr, 0};
     /* Allocate global buffers in the global memory of device*/
-    std::cout << "Allocate global buffer in FPGA\n";
+    std::cout << "Allocate global buffer in device\n";
     cl::Buffer decompData(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, (size_t)MAX_SIZE, &outExt, &err);
     cl::Buffer compData(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, (size_t)filesize, &outExt, &err);
     cl::Buffer infoBuf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, PAGE_SIZE, (void*)compinfo, &err);
