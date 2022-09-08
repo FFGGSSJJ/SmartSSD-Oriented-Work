@@ -121,13 +121,14 @@ extern "C" {
 
 /**
  * @brief rle kernel function
+ * see https://docs.xilinx.com/r/en-US/ug1399-vitis-hls/AXI4-Master-Interface for the HLS INTERFACE usage
  * 
  * @param original input data
  * @param compressed compressed data
  * @param size 
  * @param comp_info compression blocks info
  */
-void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* comp_info)
+void rle(uint8_t* original, uint8_t* compressed, int size, int32_t* comp_info)
 {
 #if BURST
 #pragma HLS INTERFACE m_axi port = original bundle = gmem0 num_read_outstanding = 32 max_read_burst_length = 32 offset = slave
@@ -137,11 +138,18 @@ void rle(uint8_t* original, uint8_t* compressed, int size, int16_t* comp_info)
 #pragma HLS INTERFACE m_axi port = original bundle = gmem0
 #pragma HLS INTERFACE m_axi port = compressed bundle = gmem1
 #pragma HLS INTERFACE m_axi port = comp_info bundle = gmem2
+#pragma HLS INTERFACE s_axilite port = original bundle = control
+#pragma HLS INTERFACE s_axilite port = compressed bundle = control
+#pragma HLS INTERFACE s_axilite port = comp_info bundle = control
+#pragma HLS INTERFACE s_axilite port = size bundle = size_control
+#pragma HLS INTERFACE s_axilite port = return bundle = control
 #endif
 
     /* local blocks */
     uint8_t origBlock[BLOCK_SIZE];
     uint8_t compBlock[BLOCK_SIZE];
+#pragma HLS ARRAY_PARTITION variable = origBlock dim = 0 complete
+#pragma HLS ARRAY_PARTITION variable = compBlock dim = 0 complete
 
     /* size in byte */
     hls::stream<int32_t, 2> loadedSize;
@@ -156,7 +164,7 @@ init_loop:
     }
     
     /* the first stores the number of block compressed */
-    comp_info[0] = (int16_t)ceil((double)size/(double)(BLOCK_SIZE));
+    comp_info[0] = (int32_t)ceil((double)size/(double)(BLOCK_SIZE));
 
     /* Perform Load-Encode-Store */
     #if BURST

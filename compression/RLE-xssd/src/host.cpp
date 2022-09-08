@@ -84,9 +84,11 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     cl::Kernel comp_kernel, pack_kernel;
 
     /* Allocate space to store information of compression */
-    int16_t* compinfo = (int16_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
-    for (uint32_t i = 0; i < PAGE_SIZE/sizeof(int16_t); i++) {
+    int32_t* compinfo = (int32_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
+    int32_t* packinfo = (int32_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
+    for (uint32_t i = 0; i < PAGE_SIZE/sizeof(int32_t); i++) {
         compinfo[i] = 0;
+        packinfo[i] = 0;
     }
 
     /* Allocate global buffers in the global memory of device*/

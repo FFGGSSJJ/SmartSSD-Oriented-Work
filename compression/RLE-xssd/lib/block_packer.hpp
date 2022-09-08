@@ -33,8 +33,8 @@
 
 
 // Self defined Macros
-#define BLOCK_SIZE      8192    // 8KB, be synced with BLOCK_SIZE in rle.cpp
-#define MAX_BLOCK_NUM   64      // be synced with MAX_BLOCK in rle.cpp
+#define BLOCK_SIZE      8192    // 8KB, be synced with BLOCK_SIZE in rle_common.hpp
+#define MAX_BLOCK_NUM   64      // be synced with MAX_BLOCK in rle_common.hpp
 #define PACK_SIZE       512
 #define ALIGN_PACK      BLOCK_SIZE/PACK_SIZE
 typedef ap_uint<PACK_SIZE> uint512_t;
