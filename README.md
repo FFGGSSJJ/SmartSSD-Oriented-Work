@@ -12,9 +12,13 @@ This research lasts for 3 stages:
 
 
 
-## Docs
+## Repo Structure
 
-- `./data`: dataset used to test encoding program
+- `./datatransfer`: program codes implemented for data transfer bandwidth tests
+- `./simple_vadd`: Vitis Example of vector addition
+- `./matrixmul`: simple matrix multiplication implmented
+- `./compression`: rle kernel algorithms implemented (**in-update**)
+- `./data`: dataset used to test transfer/encoding programs
 
 > Refer to `docs` if you want to try programs in this project
 
