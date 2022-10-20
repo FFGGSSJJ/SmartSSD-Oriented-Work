@@ -141,12 +141,17 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     krn_name = "rle_pack";
     OCL_CHECK(err, pack_kernel = cl::Kernel(program, krn_name.c_str(), &err));
 
-    /* Set some args */
+    /* Set args in comp_kernel */
     OCL_CHECK(err, err = comp_kernel.setArg(0, origData));
     OCL_CHECK(err, err = comp_kernel.setArg(1, compData));
     OCL_CHECK(err, err = comp_kernel.setArg(2, filesize));
     OCL_CHECK(err, err = comp_kernel.setArg(3, cInfo));
 
+    /* Set args in pack_kernel */
+    /*TO-DO*/
+
+
+    
     /* Open file */
     /* O_DIRECT: 
      * When direct I/O is done on 4K sector disks, 
