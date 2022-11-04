@@ -1,5 +1,6 @@
-# LZ77
-Lempel, Ziv Encoding and Decoding
+# LZ77-C
+
+This sample C code is referenced from https://github.com/cstdvd/lz77
 
 ## Description
 LZ77 is a lossless data compression algorithm published by Abraham Lempel 
