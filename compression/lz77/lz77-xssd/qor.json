@@ -1,0 +1,17 @@
+{
+    "containers": [
+        {
+            "name": "rle", 
+            "meet_system_timing": "true", 
+            "accelerators": [
+                {
+                    "name": "rle", 
+                    "check_timing": "true", 
+                    "PipelineType": "none", 
+                    "check_latency": "false", 
+                    "check_warning": "false"
+                }
+            ]
+        }
+    ]
+}
