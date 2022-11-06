@@ -22,7 +22,7 @@
 #define BytesPerNum 8
 #define BytesPerKB  1024
 #define BytesPerMB  1024*1024
-#define BLOCK_SIZE  BytesPerKB*8        // 1024 * 8 Byte = 8 KB
+#define BLOCK_SIZE  BytesPerKB*4        // 1024 * 4 Byte = 4 KB
 #define PAGE_SIZE   BytesPerKB*4        // 1024 * 4 Byte = 4 KB
 #define BURST_SIZE  32                  // 32 Byte
 #define MAX_BLOCK   64                  // 64 => 

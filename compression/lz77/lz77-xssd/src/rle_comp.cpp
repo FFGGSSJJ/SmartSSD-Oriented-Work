@@ -9,7 +9,7 @@
  * 
  */
 
-#include "lib/rle_common.hpp"
+#include "rle_common.hpp"
 using namespace::std;
 
 

@@ -14,8 +14,8 @@
  * limitations under the License.
  *
  */
-#ifndef _RLE_BLOCK_PACKER_HPP_
-#define _RLE_BLOCK_PACKER_HPP_
+#ifndef _LZ77_BLOCK_PACKER_HPP_
+#define _LZ77_BLOCK_PACKER_HPP_
 
 /**
  * @file block_packer.hpp
@@ -31,7 +31,7 @@
 
 
 // Self defined Macros
-#define BLOCK_SIZE      8192    // 8KB, be synced with BLOCK_SIZE in rle_common.hpp
+#define BLOCK_SIZE      4096    // 4KB, be synced with BLOCK_SIZE in rle_common.hpp
 #define MAX_BLOCK_NUM   64      // be synced with MAX_BLOCK in rle_common.hpp
 #define PACK_SIZE       512
 #define ALIGN_PACK      BLOCK_SIZE/PACK_SIZE
