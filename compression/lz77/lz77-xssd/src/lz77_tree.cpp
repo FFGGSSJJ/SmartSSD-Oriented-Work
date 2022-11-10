@@ -10,7 +10,7 @@
  */
 
 
-#include "lz77_tree.hpp"
+#include "lz77_tree.h"
 
 
 /**
@@ -161,7 +161,7 @@ int minChild(struct node *tree, int index)
 
 
 /**
- * @brief delete the specific node with absolute index
+ * @brief delete the specific node with absolute index in the whole window
  * 
  * @param tree 
  * @param root root index
@@ -169,7 +169,7 @@ int minChild(struct node *tree, int index)
  * @param abs_sb actual starting index of the search buffer
  * @param max size of the tree array
  */
-void delete_node(struct node *tree, int *root, unsigned char *window, int abs_sb, int max)
+void delete_node(struct node *tree, int *root, uint8_t *window, int abs_sb, int max)
 {
     /* variables */
     int parent, child, sb;
