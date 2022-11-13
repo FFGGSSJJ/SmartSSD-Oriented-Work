@@ -13,19 +13,19 @@
 #include <stdint.h>
 // #include "ap_int.h"
 #include <hls_stream.h>
-#include <cstdint>
 #include <string.h>
-#include <cmath>
 
 /* define */
-#define BitsPerByte 8
-#define BytesPerKB  1024
-#define PAGE_SIZE   BytesPerKB*4        // 1024 * 4 Byte = 4 KB
-#define MAX_BLOCK   64                  // 64 => 
+#define BitsPerByte         8
+#define BytesPerKB          1024
+#define PAGE_SIZE           BytesPerKB*4        // 1024 * 4 Byte = 4 KB
+#define DEFAULT_LA_SIZE     16                  // default lookahead buffer size 16 Bytes
+#define DEFAULT_SW_SIZE     1024                // default sliding window size 1024 Bytes
+#define MAX_BLOCK           64                  // 64 
 
 
 /* token struct def */
-/* Offset : [0, SB_SIZE]           
+/* Offset : [0, SW_SIZE]           
    Length : [0, LA_SIZE] 
 */
 struct token{

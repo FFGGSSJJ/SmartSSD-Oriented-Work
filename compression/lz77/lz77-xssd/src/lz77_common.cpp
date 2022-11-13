@@ -12,6 +12,11 @@
 #include "lz77_common.h"
 #include <stdint.h>
 
+/*
+ * Global Memory -- FPGA DRAM
+ * Local Memory -- FPGA BRAM (~ 4 Mbit = ~ 0.5 MB)
+*/
+
 /**
  * @brief load data from global memory to local memory
  * 
@@ -33,10 +38,10 @@ mem_rd:
 
 
 /**
- * @brief 
+ * @brief store data from local memory to global memory
  * 
- * @param in 
- * @param out 
+ * @param in input data from local memory
+ * @param out output data to global memory
  * @param comp_info 
  * @param encodeBlkSize 
  * @param blockId 
