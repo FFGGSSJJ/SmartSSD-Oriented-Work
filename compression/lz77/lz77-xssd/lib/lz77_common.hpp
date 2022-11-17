@@ -14,13 +14,14 @@
 // #include "ap_int.h"
 #include <hls_stream.h>
 #include <string.h>
+// using namespace::std;
 
 /* define */
 #define BitsPerByte         8
 #define BytesPerKB          1024
 #define PAGE_SIZE           BytesPerKB*4        // 1024 * 4 Byte = 4 KB
 #define DEFAULT_LA_SIZE     16                  // default lookahead buffer size 16 Bytes
-#define DEFAULT_SW_SIZE     1024                // default sliding window size 1024 Bytes
+#define DEFAULT_SW_SIZE     PAGE_SIZE           // default sliding window size 4096 Bytes
 #define MAX_BLOCK           64                  // 64 
 
 

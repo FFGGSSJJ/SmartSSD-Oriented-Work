@@ -10,7 +10,7 @@
  */
 
 
-#include "lz77_tree.h"
+#include "../lib/lz77_tree.hpp"
 
 
 /**

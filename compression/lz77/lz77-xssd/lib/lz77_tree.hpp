@@ -13,7 +13,10 @@
 #define _LZ77_TREE_H_
 
 /* Include */
+#include <stdlib.h>
 #include <stdint.h>
+#include <cstdint>
+#include <string.h>
 
 /**
  * @brief tree node for lz77 match
@@ -36,10 +39,11 @@ struct ret{
 
 
 /* Functions */
-void insert(struct node *tree, int *root, unsigned char *window, int off, int len, int max);
+
+void insert(struct node *tree, int *root, uint8_t *window, int off, int len, int max);
 int seq_cmp(const uint8_t* s1, const uint8_t* s2, int len);
-struct ret find(struct node *tree, int root, unsigned char *window, int index, int size);
-void delete_node(struct node *tree, int *root, unsigned char *window, int abs_sb, int max);
+struct ret find(struct node *tree, int root, uint8_t *window, int index, int size);
+void delete_node(struct node *tree, int *root, uint8_t *window, int abs_sb, int max);
 void updateOffset(struct node *tree, int n, int max);
 
 #endif

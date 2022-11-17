@@ -120,5 +120,3 @@ Options:
 -s <value>: searchbuffer size (default 4095)
 -h: help
 ```
-The *lookahead* and *searchbuffer* sizes are optional. If the two options are not set, default values are used.
-

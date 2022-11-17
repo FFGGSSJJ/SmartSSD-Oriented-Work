@@ -20,7 +20,7 @@
  ***************************************************************************/
 #define DEFAULT_LA_SIZE 15      /* lookahead size */
 #define DEFAULT_SB_SIZE 4095    /* search buffer size */
-#define N 3
+#define N 1
 #define MAX_BIT_BUFFER 16
 
 /***************************************************************************
@@ -80,6 +80,7 @@ void encode(FILE *file, struct bitFILE *out, int la, int sb)
         printf("Error loading the data in the window.\n");
         return;
    	}
+    printf("%d", buff_size);
     
     eof = feof(file);
     
@@ -111,6 +112,7 @@ void encode(FILE *file, struct bitFILE *out, int la, int sb)
             if (eof == 0){
                 /* scroll backward the buffer when it is almost full */
                 if (sb_index == SB_SIZE * (N - 1)){
+                    printf("hit sb_index == SB_SIZE * (N - 1)");
                     memmove(window, &(window[sb_index]), sb_size+la_size);
                     
                     /* update the node's offset when the buffer is scrolled */
