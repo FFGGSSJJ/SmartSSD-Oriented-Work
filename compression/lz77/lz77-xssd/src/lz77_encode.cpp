@@ -51,7 +51,8 @@ static void sub_lz77_encode(uint8_t* orgData, uint8_t* compData, int la, int sw)
         /* put the token in the compress blk */
         
         
-        /* read as many bytes as matched in the previuos iteration */
+        
+        /* read as many bytes as matched in the previous iteration */
         for(i = 0; i < t.len + 1; i++){
             
             /* if sliding window grows to SW_SIZE, the oldest node (left-most byte) is removed from the tree */
