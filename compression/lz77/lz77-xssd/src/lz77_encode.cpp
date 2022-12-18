@@ -125,9 +125,9 @@ void lz77_encode(uint8_t* original, uint8_t* compressed, int size, int la, int s
 #pragma HLS INTERFACE s_axilite port = original bundle = control
 #pragma HLS INTERFACE s_axilite port = compressed bundle = control
 #pragma HLS INTERFACE s_axilite port = comp_info bundle = control
-#pragma HLS INTERFACE s_axilite port = size bundle = size_control
-#pragma HLS INTERFACE s_axilite port = la bundle = size_control
-#pragma HLS INTERFACE s_axilite port = sw bundle = size_control
+#pragma HLS INTERFACE s_axilite port = size bundle = control
+#pragma HLS INTERFACE s_axilite port = la bundle = control
+#pragma HLS INTERFACE s_axilite port = sw bundle = control
 
     /* local blocks */
     uint8_t origBlock[PAGE_SIZE];
