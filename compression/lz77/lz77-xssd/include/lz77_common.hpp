@@ -20,12 +20,9 @@
 // using namespace::std;
 
 /* define */
-#define BitsPerByte         8
-#define BytesPerKB          1024
-#define PAGE_SIZE           BytesPerKB*4        // 1024 * 4 Byte = 4 KB
+#define PAGE_SIZE           4096                // 4096 Bytes = 4 KB
 #define DEFAULT_LA_SIZE     15                  // default lookahead buffer size 15 Bytes
 #define DEFAULT_SW_SIZE     PAGE_SIZE-1         // default sliding window size 4095 Bytes
-#define MAX_BLOCK           64                  // 64 
 #define OFF_MASK_0          0xFF00
 #define OFF_MASK_1          0x00F0
 #define LEN_MASK            0xF000

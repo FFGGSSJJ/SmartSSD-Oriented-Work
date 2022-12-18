@@ -14,6 +14,25 @@
 #include "../include/lz77_common.hpp"
 
 
+
+static void lz77_match(struct node *tree, int root, unsigned char *window, int la_index, int la_size)
+{
+    struct token t;
+    struct ret r;
+
+    /* find the match */
+    r = find(tree, root, window, la_index, la_size);
+
+    /* create the token based on the match */
+    t.off = r.off;
+    t.len = r.len;
+    t.next = window[la+r.len];
+    
+    return t;
+}
+
+
+
 /**
  * @brief lz77 encode function in byte level
  * 
@@ -50,7 +69,7 @@ static void sub_lz77_encode(uint8_t* orgData, uint8_t* compData, int la, int sw,
     while(buff_size > 0){
 		
         /* find the longest match of the lookahead in the tree*/
-        t = find(lz77tree, root, orgData, la_index, la_size);
+        t = lz77_match(lz77tree, root, orgData, la_index, la_size);
         token_cnt++;
         
         /* put the token in the compress blk */
