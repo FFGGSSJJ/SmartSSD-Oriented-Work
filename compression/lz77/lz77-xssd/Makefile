@@ -129,7 +129,7 @@ xclbin: build
 # $(TEMP_DIR)/rle_packer.xo: src/rle_packer.cpp
 # 	mkdir -p $(TEMP_DIR)
 # 	$(VPP) $(VPP_FLAGS) -c -k rle_packer --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
-$(TEMP_DIR)/lz77_comp.xo: src/lz77_encode.cpp
+$(TEMP_DIR)/lz77_encode.xo: src/lz77_encode.cpp
 	mkdir -p $(TEMP_DIR)
 	$(VPP) $(VPP_FLAGS) -c -k lz77_encode --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
 # $(TEMP_DIR)/rle_decomp.xo: src/rle_decomp.cpp
