@@ -15,7 +15,7 @@
 
 
 
-static void lz77_match(struct node *tree, int root, unsigned char *window, int la_index, int la_size)
+static struct token lz77_match(struct node *tree, int root, unsigned char *window, int la_index, int la_size)
 {
     struct token t;
     struct ret r;
@@ -26,7 +26,7 @@ static void lz77_match(struct node *tree, int root, unsigned char *window, int l
     /* create the token based on the match */
     t.off = r.off;
     t.len = r.len;
-    t.next = window[la+r.len];
+    t.next = window[la_index+r.len];
     
     return t;
 }

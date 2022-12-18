@@ -91,7 +91,7 @@ mem_wt0:
     /* to avoid DMA failure */
 mem_wt1:
     for (int i = encoded; i < PAGE_SIZE; i++) {
-#pragma HLS UNROLL factor=PAGE_SIZE
+#pragma HLS UNROLL factor=4096
         out[blockId*PAGE_SIZE + i] = 0;
     }
     
