@@ -81,7 +81,7 @@ mem_rd:
  * @param encodeBlkSize 
  * @param blockId 
  */
-void StoreData(uint8_t* in, uint8_t* out, int16_t* comp_info, hls::stream<int, 2>& encodeBlkSize, int blockId)
+void StoreData(uint8_t* in, uint8_t* out, int32_t* comp_info, hls::stream<int, 2>& encodeBlkSize, int blockId)
 {
     int32_t encoded = encodeBlkSize.read();
     comp_info[blockId] = encoded;

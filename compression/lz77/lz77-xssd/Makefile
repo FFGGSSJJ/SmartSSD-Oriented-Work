@@ -62,7 +62,7 @@ XSA := $(call device2xsa, $(PLATFORM))
 endif
 TEMP_DIR := ./_x.$(TARGET).$(XSA)
 BUILD_DIR := ./build_dir.$(TARGET).$(XSA)
-LIB_DIR := ./lib
+LIB_DIR := ./include
 
 # SoC variables
 RUN_APP_SCRIPT = ./run_app.sh

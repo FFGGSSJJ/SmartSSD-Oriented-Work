@@ -10,8 +10,8 @@
  */
 
 
-#include "../lib/lz77_tree.hpp"
-#include "../lib/lz77_common.hpp"
+#include "../include/lz77_tree.hpp"
+#include "../include/lz77_common.hpp"
 
 
 /**
@@ -61,7 +61,7 @@ static void sub_lz77_encode(uint8_t* orgData, uint8_t* compData, int la, int sw,
             
             /* if sliding window grows to SW_SIZE, the oldest node (left-most byte) is removed from the tree */
             if(sw_size == SW_SIZE){
-                delete_node(tree, &root, orgData, sw_index, SW_SIZE);
+                delete_node(lz77tree, &root, orgData, sw_index, SW_SIZE);
                 sw_index++;
             }else
                 sw_size++;
