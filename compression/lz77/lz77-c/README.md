@@ -121,4 +121,4 @@ Options:
 -h: help
 ```
 The *lookahead* and *searchbuffer* sizes are optional. If the two options are not set, default values are used.
-
+ahead* and *searchbuffer* sizes are optional. If the two options are not set, default valu
