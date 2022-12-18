@@ -46,6 +46,6 @@ struct token{
 
 
 /* Functions */
-void LoadData(uint8_t* in, uint8_t* out, int blockId, hls::stream<int32_t, 2>& loadedSize);
-void StoreData(uint8_t* in, uint8_t* out, int16_t* comp_info, hls::stream<int32_t, 2>& encodeBlkSize, int blockId);
+void LoadData(uint8_t* in, uint8_t* out, int blockId, hls::stream<int, 2>& loadedSize);
+void StoreData(uint8_t* in, uint8_t* out, int16_t* comp_info, hls::stream<int, 2>& encodeBlkSize, int blockId);
 void write_blk(struct token* t, uint8_t* out, int token_cnt);

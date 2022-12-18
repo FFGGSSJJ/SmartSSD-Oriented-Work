@@ -22,7 +22,7 @@
  * @param la look ahead size in bytes
  * @param sw sliding window size in bytes
  */
-static void sub_lz77_encode(uint8_t* orgData, uint8_t* compData, int la, int sw)
+static void sub_lz77_encode(uint8_t* orgData, uint8_t* compData, int la, int sw, hls::stream<int, 2>& encodedBlkSize)
 {
     /* variables */
     int i, root = -1;
@@ -42,7 +42,7 @@ static void sub_lz77_encode(uint8_t* orgData, uint8_t* compData, int la, int sw)
 
     /* set lookahead's size */
     la_size = (buff_size > LA_SIZE) ? LA_SIZE : buff_size;
-
+    
     /* write 2-byte header into compress block */
     compData[0] = (uint8_t)((LA_SIZE & 0xF000) | (SW_SIZE & 0xF000)>>4);
     compData[1] = (uint8_t)((SW_SIZE & 0x0FF0)<<4);
@@ -77,6 +77,9 @@ static void sub_lz77_encode(uint8_t* orgData, uint8_t* compData, int la, int sw)
             la_size = (buff_size > LA_SIZE) ? LA_SIZE : buff_size;
         }
 	}
+
+    /* calculate the total size after compression */
+    encodedBlkSize << (2 + token_cnt*3);
 
     return;
 }
@@ -113,7 +116,16 @@ void lz77_encode(uint8_t* original, uint8_t* compressed, int size, int la, int s
 #pragma HLS ARRAY_PARTITION variable = origBlock dim = 0 complete
 #pragma HLS ARRAY_PARTITION variable = compBlock dim = 0 complete
 
-    
+    hls::stream<int, 2> encodedBlkSize;
+
+    int iter = size/(PAGE_SIZE);
+lz77_loop:
+    for (int i = 0; i < iter; i++) {
+        LoadData(original, origBlock, i);
+        sub_lz77_encode(origBlock, compBlock, la, sw, encodedBlkSize);
+        StoreData(compBlock, compressed, comp_info, encodedBlkSize, i);
+    }
+
 
     return;
 }

@@ -52,20 +52,6 @@ void bw_info(cl_ulong Time, int datasize)
     return;
 }
 
-/**
- * @brief find the largest 4KB alignment buffer size
- * 
- * @param filesize 
- * @return int64_t 
- */
-int32_t best_bufsize(int32_t filesize)
-{
-    if (filesize >= (int32_t)max_buffer)    return max_buffer;
-    if (filesize <= (int32_t)PAGE_SIZE)     return PAGE_SIZE;
-    else    return ((int32_t)floor((long double)filesize/(double)PAGE_SIZE))*PAGE_SIZE;
-}
-
-
 
 /**
  * @brief 
@@ -77,7 +63,7 @@ int32_t best_bufsize(int32_t filesize)
  * @param compressed 
  * @return int 
  */
-int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, string filepath, string respath, int filesize)
+int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, uint8_t* original, uint8_t* compressed, int orgsize, int la, int sw)
 {
     int err;
     int nvmeFd = -1;
@@ -85,10 +71,10 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
 
     /* Allocate space to store information of compression */
     int32_t* compinfo = (int32_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
-    int32_t* packinfo = (int32_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
+    // int32_t* packinfo = (int32_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
     for (uint32_t i = 0; i < PAGE_SIZE/sizeof(int32_t); i++) {
         compinfo[i] = 0;
-        packinfo[i] = 0;
+        // packinfo[i] = 0;
     }
 
     /* Allocate global buffers in the global memory of device*/
@@ -97,58 +83,60 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     std::cout << "Allocate global buffer in device\n";
 
     /* K1 input: this buffer stores the original data to be encode 
-       p2p buffer: transfer data from ssd directly to device */
-    cl::Buffer origData(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, (size_t)filesize, &outExt, &err);
+       Host accessible: host can read/write this buffer through host pointer */
+    cl::Buffer origData(context, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR, (size_t)orgsize, (void*)original, &err);
 
     /* K1 output: this buffer stores the compressed data output from comp_kernel /written by device 
        K2 input: this buffer will also uses as the input into pack_kernel */
-    cl::Buffer compData(context, CL_MEM_READ_WRITE, (size_t)filesize, NULL, &err);
+    cl::Buffer compData(context, CL_MEM_READ_WRITE, (size_t)orgsize, NULL, &err);
 
     /* K2 output: this buffer stores the packed data output from pack_kernel /written by device 
        p2p buffer: transfer data from device directly to ssd */
-    cl::Buffer packData(context, CL_MEM_WRITE_ONLY | CL_MEM_EXT_PTR_XILINX, (size_t)filesize, &outExt, &err);
+    // cl::Buffer packData(context, CL_MEM_WRITE_ONLY | CL_MEM_EXT_PTR_XILINX, (size_t)filesize, &outExt, &err);
 
     /* K1 output: this buffer stores the compression info output from comp_kernel
        K2 input: this buffer will be used as the input into pack_kernel 
        Host accessible: host can read/write this buffer through host pointer */
-    cl::Buffer cInfo(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, PAGE_SIZE, (void*)compinfo, &err);
+    cl::Buffer cInfo(context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, PAGE_SIZE, (void*)compinfo, &err);
 
     /* K2 ouput: this buffer stores the pack info output from pack_kernel 
        Host accessible: host can read/write this buffer through host pointer */
-    cl::Buffer pInfo(context, CL_MEM_USE_HOST_P | CL_MEM_WRITE_ONLY, PAGE_SIZE, (void*)packinfo, &err);
+    // cl::Buffer pInfo(context, CL_MEM_USE_HOST_P | CL_MEM_WRITE_ONLY, PAGE_SIZE, (void*)packinfo, &err);
 
     /* Map p2p buffers */
-    std::cout << "\nMap P2P device buffers to host accessible pointers\n" << std::endl;
-    void* original = cmdq.enqueueMapBuffer( origData,
-                                            CL_TRUE,                    // blocking call
-                                            CL_MAP_WRITE | CL_MAP_READ, // Indicates we will be writing
-                                            0,                          // buffer offset
-                                            filesize,                   // size in bytes
-                                            nullptr, nullptr,
-                                            &err); // error code
-    void* compressed = cmdq.enqueueMapBuffer( packData,
-                                            CL_TRUE,                    // blocking call
-                                            CL_MAP_READ | CL_MAP_WRITE, // Indicates we will be writing
-                                            0,                          // buffer offset
-                                            filesize,                   // size in bytes
-                                            nullptr, nullptr,
-                                            &err); // error code
-    cmdq.finish();
+    // std::cout << "\nMap P2P device buffers to host accessible pointers\n" << std::endl;
+    // void* original = cmdq.enqueueMapBuffer( origData,
+    //                                         CL_TRUE,                    // blocking call
+    //                                         CL_MAP_WRITE | CL_MAP_READ, // Indicates we will be writing
+    //                                         0,                          // buffer offset
+    //                                         filesize,                   // size in bytes
+    //                                         nullptr, nullptr,
+    //                                         &err); // error code
+    // void* compressed = cmdq.enqueueMapBuffer( packData,
+    //                                         CL_TRUE,                    // blocking call
+    //                                         CL_MAP_READ | CL_MAP_WRITE, // Indicates we will be writing
+    //                                         0,                          // buffer offset
+    //                                         filesize,                   // size in bytes
+    //                                         nullptr, nullptr,
+    //                                         &err); // error code
+    // cmdq.finish();
 
     /* Initialize the comp_kernels */
-    std::string krn_name = "rle_comp";
+    std::string krn_name = "lz77_encode";
     OCL_CHECK(err, comp_kernel = cl::Kernel(program, krn_name.c_str(), &err));
-    krn_name = "rle_pack";
-    OCL_CHECK(err, pack_kernel = cl::Kernel(program, krn_name.c_str(), &err));
+    // krn_name = "rle_pack";
+    // OCL_CHECK(err, pack_kernel = cl::Kernel(program, krn_name.c_str(), &err));
 
     /* Set args in comp_kernel */
     OCL_CHECK(err, err = comp_kernel.setArg(0, origData));
     OCL_CHECK(err, err = comp_kernel.setArg(1, compData));
-    OCL_CHECK(err, err = comp_kernel.setArg(2, filesize));
-    OCL_CHECK(err, err = comp_kernel.setArg(3, cInfo));
+    OCL_CHECK(err, err = comp_kernel.setArg(2, orgsize));
+    OCL_CHECK(err, err = comp_kernel.setArg(3, la));
+    OCL_CHECK(err, err = comp_kernel.setArg(4, sw));
+    OCL_CHECK(err, err = comp_kernel.setArg(5, cInfo));
 
     /* Set args in pack_kernel */
-    /*TO-DO*/
+    /*TODO*/
 
 
     
@@ -159,41 +147,53 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
      * the file offset, and the user memory buffer is 4K bytes 
      * refer to https://www.ibm.com/docs/en/spectrum-scale/5.0.5?topic=applications-considerations-use-direct-io-o-direct
      */
-    nvmeFd = open(filepath.c_str(), O_CREAT | O_RDWR | O_DIRECT, 0777);
-    if (nvmeFd < 0) {
-        cout << "Open Failed\n";
-        return EXIT_FAILURE;
-    } cout << "INFO: Successfully opened NVME SSD for read(): " << filepath << endl;
+    // nvmeFd = open(filepath.c_str(), O_CREAT | O_RDWR | O_DIRECT, 0777);
+    // if (nvmeFd < 0) {
+    //     cout << "Open Failed\n";
+    //     return EXIT_FAILURE;
+    // } cout << "INFO: Successfully opened NVME SSD for read(): " << filepath << endl;
 
 
     /* Transfer to original data into FPGA */
-    size_t bufsize = (size_t)best_bufsize(filesize);
-    int iter = ceil((double)filesize/(double)bufsize);
-    int ret = 0;
-    uint64_t offset = 0;
+    
+    // int iter = ceil((double)filesize/(double)bufsize);
+    // int ret = 0;
+    // uint64_t offset = 0;
 
-    cout << "Start P2P to transfer Original Data from SSD into FPGA\n";
-    cout << "Original Size: " << xcl::convert_size(filesize) << " Bufsize: " << xcl::convert_size(bufsize) << endl;
+    // cout << "Start P2P to transfer Original Data from SSD into FPGA\n";
+    // cout << "Original Size: " << xcl::convert_size(filesize) << " Bufsize: " << xcl::convert_size(bufsize) << endl;
+    // std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
+    // for (int i = 0; i < iter; i++) {
+    //     ret = pread(nvmeFd, (void*)original, bufsize, offset);
+    //     offset += (uint64_t)bufsize;
+    //     if (ret == -1) {
+    //         cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << endl;
+    //         (void)close(nvmeFd);
+    //         return EXIT_FAILURE;
+    //     } else 
+    //         cout << "Read size in iteration " << i << ": " << ret << endl;
+    // }
+    // std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
+    // (void)close(nvmeFd);
+
+    // /* Calculate the transfer time and bandwidth */
+    // cl_ulong Time = std::chrono::duration_cast<std::chrono::microseconds>(End1 - Start1).count();
+    // bw_info(Time, filesize);
+
+
+
+    /* transfer to original data into FPGA from DRAM */
+    cout << "Trying to transfer Original Data from DRAM into FPGA\n";
     std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < iter; i++) {
-        ret = pread(nvmeFd, (void*)original, bufsize, offset);
-        offset += (uint64_t)bufsize;
-        if (ret == -1) {
-            cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << endl;
-            (void)close(nvmeFd);
-            return EXIT_FAILURE;
-        } else 
-            cout << "Read size in iteration " << i << ": " << ret << endl;
-    }
+    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({origData}, 0 /* 0 means from host*/));
+    cmdq.finish();
     std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
-    (void)close(nvmeFd);
-
-    /* Calculate the transfer time and bandwidth */
     cl_ulong Time = std::chrono::duration_cast<std::chrono::microseconds>(End1 - Start1).count();
-    bw_info(Time, filesize);
+    bw_info(Time, orgsize);
+
 
     /* Launch the kernels */
-    cout << "\nLaunch the RLE Compression kernel" << endl;
+    cout << "\nLaunch the LZ77 Encode kernel" << endl;
     std::chrono::high_resolution_clock::time_point compress_start = std::chrono::high_resolution_clock::now();
     OCL_CHECK(err, err = cmdq.enqueueTask(comp_kernel));
     cmdq.finish();
@@ -205,8 +205,8 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     double dsduration = dnsduration / ((double)1000000);
     cout << "Kernel execution time: " << dnsduration << "ns = " << dsduration << "s\n";
 
-    /* Transfer compression information and performance buffer */
-    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({cInfo}, CL_MIGRATE_MEM_OBJECT_HOST));
+    /* Transfer compressed data and compression information */
+    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({compData, cInfo}, CL_MIGRATE_MEM_OBJECT_HOST));
     cmdq.finish();
 
     /* Open file */
@@ -215,46 +215,52 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
      * the alignment requirement for the number of bytes, 
      * the file offset, and the user memory buffer is 4K bytes 
      */
-    nvmeFd = open(respath.c_str(), O_CREAT | O_RDWR | O_DIRECT, 0777);
-    if (nvmeFd < 0) {
-        cout << "Open Failed\n";
-        return EXIT_FAILURE;
-    } cout << "INFO: Successfully opened NVME SSD for read(): " << filepath << endl;
+    // nvmeFd = open(respath.c_str(), O_CREAT | O_RDWR | O_DIRECT, 0777);
+    // if (nvmeFd < 0) {
+    //     cout << "Open Failed\n";
+    //     return EXIT_FAILURE;
+    // } cout << "INFO: Successfully opened NVME SSD for read(): " << filepath << endl;
     
-    /* P2P Transfer to load the result into SSD */
-    int compsize = 0;
-    for (int i = 1; i < compinfo[0] + 1; i++) {
-        cout << "Block " << i - 1 << ": " << compinfo[i];
-        compsize += compinfo[i];
-    }
-    bufsize = (size_t)best_bufsize(compsize);
-    iter = ceil(((double)compsize/(double)bufsize));
-    offset = 0;
+    // /* P2P Transfer to load the result into SSD */
+    // int compsize = 0;
+    // for (int i = 1; i < compinfo[0] + 1; i++) {
+    //     cout << "Block " << i - 1 << ": " << compinfo[i];
+    //     compsize += compinfo[i];
+    // }
+    // bufsize = (size_t)best_bufsize(compsize);
+    // iter = ceil(((double)compsize/(double)bufsize));
+    // offset = 0;
+
+    // /* check the result */
+    // cout << "\n\nCompress Data: \n";
+    // for (int i = 0; i < compsize; i++)
+    //     cout << ((uint8_t*)compressed)[i];
+
+    // cout << "\nStart P2P to transfer Compressed Data from FPGA into SSD\n";
+    // cout << "Compressed Size = " << xcl::convert_size(compsize) << "Bufsize: " << xcl::convert_size(bufsize) << endl;
+    // std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
+    // for (int i = 0; i < iter; i++) {
+    //     ret = pwrite(nvmeFd, (void*)compressed, bufsize, offset);
+    //     offset += (uint64_t)bufsize;
+    //     if (ret == -1) {
+    //         cout << "P2P: write() failed, err: " << ret << ", line: " << __LINE__ << endl;
+    //         (void)close(nvmeFd);
+    //         return EXIT_FAILURE;
+    //     } else 
+    //         cout << "Write size in iteration " << i << ": " << ret << endl;
+    // }
+    // std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
+    // (void)close(nvmeFd);
+
+    /* Calculate the transfer time and bandwidth */
+    // cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
+    // bw_info(Time2, compsize);
 
     /* check the result */
     cout << "\n\nCompress Data: \n";
-    for (int i = 0; i < compsize; i++)
-        cout << ((uint8_t*)compressed)[i];
-
-    cout << "\nStart P2P to transfer Compressed Data from FPGA into SSD\n";
-    cout << "Compressed Size = " << xcl::convert_size(compsize) << "Bufsize: " << xcl::convert_size(bufsize) << endl;
-    std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < iter; i++) {
-        ret = pwrite(nvmeFd, (void*)compressed, bufsize, offset);
-        offset += (uint64_t)bufsize;
-        if (ret == -1) {
-            cout << "P2P: write() failed, err: " << ret << ", line: " << __LINE__ << endl;
-            (void)close(nvmeFd);
-            return EXIT_FAILURE;
-        } else 
-            cout << "Write size in iteration " << i << ": " << ret << endl;
+    for (int i = 0; i < orgsize; i++) {
+        cout << compressed[i];
     }
-    std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
-    (void)close(nvmeFd);
-
-    /* Calculate the transfer time and bandwidth */
-    cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
-    bw_info(Time2, compsize);
 
     /* free allocated memory */
     free(compinfo);
@@ -278,139 +284,139 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
  */
 int ssd_decompress(cl::Context context, cl::CommandQueue cmdq, cl::Program program, string filepath, string respath, int filesize)
 {
-    int err;
-    int nvmeFd = -1;
-    cl::Kernel kernel;
+    // int err;
+    // int nvmeFd = -1;
+    // cl::Kernel kernel;
 
-    /* Allocate space to store information of compression */
-    int32_t* compinfo = (int32_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
-    for (uint32_t i = 0; i < PAGE_SIZE/sizeof(int32_t); i++)    compinfo[i] = 0;
+    // /* Allocate space to store information of compression */
+    // int32_t* compinfo = (int32_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
+    // for (uint32_t i = 0; i < PAGE_SIZE/sizeof(int32_t); i++)    compinfo[i] = 0;
 
-    cl_mem_ext_ptr_t outExt;
-    outExt = {XCL_MEM_EXT_P2P_BUFFER, nullptr, 0};
-    /* Allocate global buffers in the global memory of device*/
-    std::cout << "Allocate global buffer in device\n";
-    cl::Buffer decompData(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, (size_t)MAX_SIZE, &outExt, &err);
-    cl::Buffer compData(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, (size_t)filesize, &outExt, &err);
-    cl::Buffer infoBuf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, PAGE_SIZE, (void*)compinfo, &err);
+    // cl_mem_ext_ptr_t outExt;
+    // outExt = {XCL_MEM_EXT_P2P_BUFFER, nullptr, 0};
+    // /* Allocate global buffers in the global memory of device*/
+    // std::cout << "Allocate global buffer in device\n";
+    // cl::Buffer decompData(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, (size_t)MAX_SIZE, &outExt, &err);
+    // cl::Buffer compData(context, CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY, (size_t)filesize, &outExt, &err);
+    // cl::Buffer infoBuf(context, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, PAGE_SIZE, (void*)compinfo, &err);
 
-    /* Map p2p buffers */
-    std::cout << "\nMap P2P device buffers to host access pointers\n" << std::endl;
-    void* decompressed = cmdq.enqueueMapBuffer( decompData,
-                                            CL_TRUE,                    // blocking call
-                                            CL_MAP_WRITE | CL_MAP_READ, // Indicates we will be writing
-                                            0,                          // buffer offset
-                                            MAX_SIZE,                   // size in bytes
-                                            nullptr, nullptr,
-                                            &err); // error code
-    void* compressed = cmdq.enqueueMapBuffer( compData,
-                                            CL_TRUE,                    // blocking call
-                                            CL_MAP_WRITE | CL_MAP_READ, // Indicates we will be writing
-                                            0,                          // buffer offset
-                                            filesize,                   // size in bytes
-                                            nullptr, nullptr,
-                                            &err); // error code
-    cmdq.finish();
+    // /* Map p2p buffers */
+    // std::cout << "\nMap P2P device buffers to host access pointers\n" << std::endl;
+    // void* decompressed = cmdq.enqueueMapBuffer( decompData,
+    //                                         CL_TRUE,                    // blocking call
+    //                                         CL_MAP_WRITE | CL_MAP_READ, // Indicates we will be writing
+    //                                         0,                          // buffer offset
+    //                                         MAX_SIZE,                   // size in bytes
+    //                                         nullptr, nullptr,
+    //                                         &err); // error code
+    // void* compressed = cmdq.enqueueMapBuffer( compData,
+    //                                         CL_TRUE,                    // blocking call
+    //                                         CL_MAP_WRITE | CL_MAP_READ, // Indicates we will be writing
+    //                                         0,                          // buffer offset
+    //                                         filesize,                   // size in bytes
+    //                                         nullptr, nullptr,
+    //                                         &err); // error code
+    // cmdq.finish();
 
-    /* Initialize the kernels */
-    std::string krn_name = "rle_decomp";
-    OCL_CHECK(err, kernel = cl::Kernel(program, krn_name.c_str(), &err));
+    // /* Initialize the kernels */
+    // std::string krn_name = "rle_decomp";
+    // OCL_CHECK(err, kernel = cl::Kernel(program, krn_name.c_str(), &err));
 
-    /* Set some args */
-    OCL_CHECK(err, err = kernel.setArg(0, compData));
-    OCL_CHECK(err, err = kernel.setArg(1, decompData));
-    OCL_CHECK(err, err = kernel.setArg(2, filesize));
-    OCL_CHECK(err, err = kernel.setArg(3, infoBuf));
+    // /* Set some args */
+    // OCL_CHECK(err, err = kernel.setArg(0, compData));
+    // OCL_CHECK(err, err = kernel.setArg(1, decompData));
+    // OCL_CHECK(err, err = kernel.setArg(2, filesize));
+    // OCL_CHECK(err, err = kernel.setArg(3, infoBuf));
 
-    /* Open file */
-    /* O_DIRECT: 
-     * When direct I/O is done on 4K sector disks, 
-     * the alignment requirement for the number of bytes, 
-     * the file offset, and the user memory buffer is 4K bytes 
-     * refer to https://www.ibm.com/docs/en/spectrum-scale/5.0.5?topic=applications-considerations-use-direct-io-o-direct
-     */
-    nvmeFd = open(filepath.c_str(), O_RDWR | O_DIRECT);
-    if (nvmeFd < 0) {
-        cout << "Open Failed\n";
-        return EXIT_FAILURE;
-    } cout << "INFO: Successfully opened NVME SSD for read(): " << filepath << endl;
+    // /* Open file */
+    // /* O_DIRECT: 
+    //  * When direct I/O is done on 4K sector disks, 
+    //  * the alignment requirement for the number of bytes, 
+    //  * the file offset, and the user memory buffer is 4K bytes 
+    //  * refer to https://www.ibm.com/docs/en/spectrum-scale/5.0.5?topic=applications-considerations-use-direct-io-o-direct
+    //  */
+    // nvmeFd = open(filepath.c_str(), O_RDWR | O_DIRECT);
+    // if (nvmeFd < 0) {
+    //     cout << "Open Failed\n";
+    //     return EXIT_FAILURE;
+    // } cout << "INFO: Successfully opened NVME SSD for read(): " << filepath << endl;
 
-    /* Transfer to original data into FPGA */
-    cout << "Start P2P to transfer Original Data from SSD into FPGA\n";
-    size_t bufsize = (size_t)best_bufsize(filesize);
-    int iter = ceil((double)filesize/(double)bufsize);
-    int ret = 0;
-    uint32_t offset = 0;
-    std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < iter; i++) {
-        ret = pread(nvmeFd, (void*)((uint8_t*)compressed + iter*bufsize), bufsize, offset);
-        offset += (uint32_t)bufsize;
-        if (ret == -1) {
-            cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << endl;
-            return EXIT_FAILURE;
-        } else 
-            cout << "Read size in iteration " << i << ": " << ret << endl;
-    }
-    std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
-    (void)close(nvmeFd);
+    // /* Transfer to original data into FPGA */
+    // cout << "Start P2P to transfer Original Data from SSD into FPGA\n";
+    // size_t bufsize = (size_t)best_bufsize(filesize);
+    // int iter = ceil((double)filesize/(double)bufsize);
+    // int ret = 0;
+    // uint32_t offset = 0;
+    // std::chrono::high_resolution_clock::time_point Start1 = std::chrono::high_resolution_clock::now();
+    // for (int i = 0; i < iter; i++) {
+    //     ret = pread(nvmeFd, (void*)((uint8_t*)compressed + iter*bufsize), bufsize, offset);
+    //     offset += (uint32_t)bufsize;
+    //     if (ret == -1) {
+    //         cout << "P2P: read() failed, err: " << ret << ", line: " << __LINE__ << endl;
+    //         return EXIT_FAILURE;
+    //     } else 
+    //         cout << "Read size in iteration " << i << ": " << ret << endl;
+    // }
+    // std::chrono::high_resolution_clock::time_point End1 = std::chrono::high_resolution_clock::now();
+    // (void)close(nvmeFd);
 
-     /* Calculate the transfer time and bandwidth */
-    cl_ulong Time = std::chrono::duration_cast<std::chrono::microseconds>(End1 - Start1).count();
-    bw_info(Time, filesize);
+    //  /* Calculate the transfer time and bandwidth */
+    // cl_ulong Time = std::chrono::duration_cast<std::chrono::microseconds>(End1 - Start1).count();
+    // bw_info(Time, filesize);
 
-    /* Launch the kernels */
-    cout << "\nLaunch the RLE Decompression kernel" << endl;
-    std::chrono::high_resolution_clock::time_point decompress_start = std::chrono::high_resolution_clock::now();
-    OCL_CHECK(err, err = cmdq.enqueueTask(kernel));
-    cmdq.finish();
-    std::chrono::high_resolution_clock::time_point decompress_end = std::chrono::high_resolution_clock::now();
+    // /* Launch the kernels */
+    // cout << "\nLaunch the RLE Decompression kernel" << endl;
+    // std::chrono::high_resolution_clock::time_point decompress_start = std::chrono::high_resolution_clock::now();
+    // OCL_CHECK(err, err = cmdq.enqueueTask(kernel));
+    // cmdq.finish();
+    // std::chrono::high_resolution_clock::time_point decompress_end = std::chrono::high_resolution_clock::now();
 
 
-    /* Calculate kernel launch time */
-    cl_ulong DecompressTime = std::chrono::duration_cast<std::chrono::microseconds>(decompress_end - decompress_start).count();
-    double dnsduration = (double)DecompressTime;
-    double dsduration = dnsduration / ((double)1000000);
-    cout << "Kernel execution time: " << dnsduration << "ns = " << dsduration << "s\n";
+    // /* Calculate kernel launch time */
+    // cl_ulong DecompressTime = std::chrono::duration_cast<std::chrono::microseconds>(decompress_end - decompress_start).count();
+    // double dnsduration = (double)DecompressTime;
+    // double dsduration = dnsduration / ((double)1000000);
+    // cout << "Kernel execution time: " << dnsduration << "ns = " << dsduration << "s\n";
 
-    /* Open file */
-    /* O_DIRECT: 
-     * When direct I/O is done on 4K sector disks, 
-     * the alignment requirement for the number of bytes, 
-     * the file offset, and the user memory buffer is 4K bytes 
-     */
-    nvmeFd = open(respath.c_str(), O_RDWR | O_DIRECT);
-    if (nvmeFd < 0) {
-        cout << "Open Failed\n";
-        return EXIT_FAILURE;
-    } cout << "INFO: Successfully opened NVME SSD for read(): " << filepath << endl;
+    // /* Open file */
+    // /* O_DIRECT: 
+    //  * When direct I/O is done on 4K sector disks, 
+    //  * the alignment requirement for the number of bytes, 
+    //  * the file offset, and the user memory buffer is 4K bytes 
+    //  */
+    // nvmeFd = open(respath.c_str(), O_RDWR | O_DIRECT);
+    // if (nvmeFd < 0) {
+    //     cout << "Open Failed\n";
+    //     return EXIT_FAILURE;
+    // } cout << "INFO: Successfully opened NVME SSD for read(): " << filepath << endl;
 
-    /* Transfer information buffer */
-    OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({infoBuf}, CL_MIGRATE_MEM_OBJECT_HOST));
-    cmdq.finish();
+    // /* Transfer information buffer */
+    // OCL_CHECK(err, err = cmdq.enqueueMigrateMemObjects({infoBuf}, CL_MIGRATE_MEM_OBJECT_HOST));
+    // cmdq.finish();
 
-    /* P2P transfer to load the result into SSD */
-    int decompsize = compinfo[0];
-    bufsize = (size_t)best_bufsize(decompsize);
-    iter = ceil(decompsize/(int)bufsize);
-    offset = 0;
-    cout << "\nTrying to transfer Decompressed Data from FPGA into SSD\n";
-    std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < iter; i++) {
-        ret = pwrite(nvmeFd, (void*)decompressed, bufsize, offset);
-        offset += bufsize;
-        if (ret == -1) {
-            cout << "P2P: write() failed, err: " << ret << ", line: " << __LINE__ << endl;
-            return EXIT_FAILURE;
-        }
-    }
-    std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
+    // /* P2P transfer to load the result into SSD */
+    // int decompsize = compinfo[0];
+    // bufsize = (size_t)best_bufsize(decompsize);
+    // iter = ceil(decompsize/(int)bufsize);
+    // offset = 0;
+    // cout << "\nTrying to transfer Decompressed Data from FPGA into SSD\n";
+    // std::chrono::high_resolution_clock::time_point Start2 = std::chrono::high_resolution_clock::now();
+    // for (int i = 0; i < iter; i++) {
+    //     ret = pwrite(nvmeFd, (void*)decompressed, bufsize, offset);
+    //     offset += bufsize;
+    //     if (ret == -1) {
+    //         cout << "P2P: write() failed, err: " << ret << ", line: " << __LINE__ << endl;
+    //         return EXIT_FAILURE;
+    //     }
+    // }
+    // std::chrono::high_resolution_clock::time_point End2 = std::chrono::high_resolution_clock::now();
 
-    /* Calculate the transfer time and bandwidth */
-    cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
-    bw_info(Time2, decompsize);
+    // /* Calculate the transfer time and bandwidth */
+    // cl_ulong Time2 = std::chrono::duration_cast<std::chrono::microseconds>(End2 - Start2).count();
+    // bw_info(Time2, decompsize);
 
-    /* free allocated space */
-    free(compinfo);
+    // /* free allocated space */
+    // free(compinfo);
     
     return EXIT_SUCCESS;
 }
