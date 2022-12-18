@@ -57,7 +57,7 @@ static void sub_lz77_encode(uint8_t* orgData, uint8_t* compData, int la, int sw,
     
     /* declare needed structs */
     struct token t;
-    struct node lz77tree[SW_SIZE];
+    struct node lz77tree[DEFAULT_SW_SIZE];
 
     /* set lookahead's size */
     la_size = (buff_size > LA_SIZE) ? LA_SIZE : buff_size;
