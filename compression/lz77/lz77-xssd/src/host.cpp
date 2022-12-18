@@ -88,7 +88,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
 
     /* K1 output: this buffer stores the compressed data output from comp_kernel /written by device 
        K2 input: this buffer will also uses as the input into pack_kernel */
-    cl::Buffer compData(context, CL_MEM_READ_WRITE, (size_t)orgsize, NULL, &err);
+    cl::Buffer compData(context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, (size_t)orgsize, (void*)compressed, &err);
 
     /* K2 output: this buffer stores the packed data output from pack_kernel /written by device 
        p2p buffer: transfer data from device directly to ssd */
@@ -97,7 +97,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     /* K1 output: this buffer stores the compression info output from comp_kernel
        K2 input: this buffer will be used as the input into pack_kernel 
        Host accessible: host can read/write this buffer through host pointer */
-    cl::Buffer cInfo(context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, PAGE_SIZE, (void*)compinfo, &err);
+    cl::Buffer cInfo(context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, (size_t)PAGE_SIZE, (void*)compinfo, &err);
 
     /* K2 ouput: this buffer stores the pack info output from pack_kernel 
        Host accessible: host can read/write this buffer through host pointer */
@@ -261,6 +261,7 @@ int ssd_compress(cl::Context context, cl::CommandQueue cmdq, cl::Program program
     for (int i = 0; i < orgsize; i++) {
         cout << compressed[i];
     }
+    cout << "\n\nCompress Size: \n" << compinfo[0] << "\n";
 
     /* free allocated memory */
     free(compinfo);
@@ -433,11 +434,6 @@ int main(int argc, char** argv)
     //**************//"<Full Arg>",  "<Short Arg>", "<Description>", "<Default>"
     parser.addSwitch("--xclbin_file", "-x", "input binary file string", "");
     parser.addSwitch("--direction", "-c", "1 for compression or 0 for decompression", "1");
-    parser.addSwitch("--file_path", "-p", "file path string", "");
-    parser.addSwitch("--result_path", "-r", "file path to compressed result", "");
-    parser.addSwitch("--file_size_b", "-b", "file size in B", "0");
-    parser.addSwitch("--file_size_kb", "-k", "file size in KB", "0");
-    parser.addSwitch("--file_size_mb", "-m", "file size in MB", "0");
     parser.addSwitch("--device", "-d", "device id", "0");
     parser.parse(argc, argv);
     if (argc < 9) {
@@ -447,30 +443,8 @@ int main(int argc, char** argv)
 
     // Read settings
     auto binaryFile = parser.value("xclbin_file");
-    string filepath = parser.value("file_path");
-    string respath = parser.value("result_path");
     string dev_id = parser.value("device");
-    int64_t file_size_b = stoi(parser.value("file_size_b"));
-    int64_t file_size_kb = stoi(parser.value("file_size_kb"));
-    int64_t file_size_mb = stoi(parser.value("file_size_mb"));
-    file_size_kb = file_size_b > file_size_kb*BytesPerKB ? file_size_b : file_size_kb*BytesPerKB;
-    int64_t file_size_byte = file_size_kb > BytesPerMB*file_size_mb ? file_size_kb : BytesPerMB*file_size_mb;
     int8_t compFlag = stoi(parser.value("direction"));
-
-    if (filepath.empty()) {
-        cout << "Please specify the file to be compressed\n";
-        return EXIT_FAILURE;
-    }
-    if (respath.empty()) {
-        cout << "Result path not specify, the compressed result will cover the original file\n";
-        respath = filepath;
-    }
-    if (file_size_kb == 0 && file_size_mb == 0 && file_size_b == 0) {
-        cout << "Please specify the file size\n";
-        return EXIT_FAILURE;
-    }
-    if (file_size_kb != 0 && file_size_kb != file_size_mb*1024) 
-        cout << "As both B, KB and MB are specified, the largest one will be used.\n";
 
     /* set kernel environment */
     cl_int err;
@@ -532,25 +506,25 @@ int main(int argc, char** argv)
     } else
         cout << "Device[" << dev_id << "]: program successful!\n";
 
-    if (compFlag == 1) {
-        /* Proceed RLE compression */
-        cout << "\n------------------------------------------------\n";
-        cout << "Perform RLE compression with unaligned DRAM\n";
-        cout << "-------------------------------------------------\n";
-        if (EXIT_FAILURE == ssd_compress(context, cmdq, program, filepath, respath, file_size_byte))
-            cout << "TEST FAILED\n";
-        else
-            cout << "TEST PASSED\n";
-    } else {
-        /* Proceed RLE decompression */
-        cout << "\n------------------------------------------------\n";
-        cout << "Perform RLE decompression with unaligned DRAM\n";
-        cout << "-------------------------------------------------\n";
-        if (EXIT_FAILURE == ssd_decompress(context, cmdq, program, filepath, respath, file_size_byte))
-            cout << "TEST FAILED\n";
-        else
-            cout << "TEST PASSED\n";
+
+    uint8_t* original = (uint8_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
+    uint8_t* compressed = (uint8_t*)aligned_alloc(PAGE_SIZE, PAGE_SIZE);
+
+    for (int i = 0; i < 4096; i++) {
+        original[i] = i > 4096/2 ? 'a' : 'b';
+        compressed[i] = 0;
     }
+
+    if (compFlag == 1) {
+        /* Proceed LZ77 encode */
+        cout << "\n------------------------------------------------\n";
+        cout << "Perform LZ77 encode with aligned DRAM\n";
+        cout << "-------------------------------------------------\n";
+        if (EXIT_FAILURE == ssd_compress(context, cmdq, program, original, compressed, 4096, -1, -1))
+            cout << "TEST FAILED\n";
+        else
+            cout << "TEST PASSED\n";
+    } 
     
     return EXIT_SUCCESS;    
 }
