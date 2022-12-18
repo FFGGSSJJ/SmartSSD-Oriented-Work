@@ -62,6 +62,7 @@ XSA := $(call device2xsa, $(PLATFORM))
 endif
 TEMP_DIR := ./_x.$(TARGET).$(XSA)
 BUILD_DIR := ./build_dir.$(TARGET).$(XSA)
+LIB_DIR := ./lib
 
 # SoC variables
 RUN_APP_SCRIPT = ./run_app.sh
@@ -107,8 +108,6 @@ EMCONFIG_DIR = $(TEMP_DIR)
 
 ############################## Declaring Binary Containers ##############################
 BINARY_CONTAINERS += $(BUILD_DIR)/lz77.xclbin
-BINARY_CONTAINER_lz77_OBJS += $(TEMP_DIR)/lz77_tree.xo
-BINARY_CONTAINER_lz77_OBJS += $(TEMP_DIR)/lz77_common.xo
 BINARY_CONTAINER_lz77_OBJS += $(TEMP_DIR)/lz77_encode.xo
 # BINARY_CONTAINER_rle_OBJS += $(TEMP_DIR)/rle_decomp.xo
 # BINARY_CONTAINER_rle_OBJS += $(TEMP_DIR)/rle_packer.xo
@@ -131,15 +130,9 @@ xclbin: build
 # $(TEMP_DIR)/rle_packer.xo: src/rle_packer.cpp
 # 	mkdir -p $(TEMP_DIR)
 # 	$(VPP) $(VPP_FLAGS) -c -k rle_packer --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
-$(TEMP_DIR)/lz77_tree.xo: src/lz77_tree.cpp
-	mkdir -p $(TEMP_DIR)
-	$(VPP) $(VPP_FLAGS) -c -k lz77_tree --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
-$(TEMP_DIR)/lz77_common.xo: src/lz77_common.cpp
-	mkdir -p $(TEMP_DIR)
-	$(VPP) $(VPP_FLAGS) -c -k lz77_common --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
 $(TEMP_DIR)/lz77_encode.xo: src/lz77_encode.cpp
 	mkdir -p $(TEMP_DIR)
-	$(VPP) $(VPP_FLAGS) -c -k lz77_encode --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
+	$(VPP) $(VPP_FLAGS) -c -k lz77_encode --temp_dir $(TEMP_DIR)  -I$(LIB_DIR) -o'$@' '$<'
 # $(TEMP_DIR)/rle_decomp.xo: src/rle_decomp.cpp
 # 	mkdir -p $(TEMP_DIR)
 # 	$(VPP) $(VPP_FLAGS) -c -k rle_decomp --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'

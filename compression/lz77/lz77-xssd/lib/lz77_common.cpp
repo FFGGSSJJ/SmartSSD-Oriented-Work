@@ -9,7 +9,7 @@
  * 
  */
 
-#include "../lib/lz77_common.hpp"
+#include "lz77_common.hpp"
 #include <stdint.h>
 
 /*
