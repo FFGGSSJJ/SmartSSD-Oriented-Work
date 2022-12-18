@@ -72,7 +72,7 @@ RESULT_STRING = TEST PASSED
 
 VPP := v++
 VPP_PFLAGS :=
-CMD_ARGS = -x $(BUILD_DIR)/rle.xclbin
+CMD_ARGS = -x $(BUILD_DIR)/lz77.xclbin
 
 include $(XF_PROJ_ROOT)/common/includes/opencl/opencl.mk
 include config.mk
@@ -102,14 +102,14 @@ endif
 
 
 
-EXECUTABLE = ./rle
+EXECUTABLE = ./lz77
 EMCONFIG_DIR = $(TEMP_DIR)
 
 ############################## Declaring Binary Containers ##############################
-BINARY_CONTAINERS += $(BUILD_DIR)/rle.xclbin
-BINARY_CONTAINER_rle_OBJS += $(TEMP_DIR)/rle_comp.xo
-BINARY_CONTAINER_rle_OBJS += $(TEMP_DIR)/rle_decomp.xo
-BINARY_CONTAINER_rle_OBJS += $(TEMP_DIR)/rle_packer.xo
+BINARY_CONTAINERS += $(BUILD_DIR)/lz77.xclbin
+BINARY_CONTAINER_lz77_OBJS += $(TEMP_DIR)/lz77_encode.xo
+# BINARY_CONTAINER_rle_OBJS += $(TEMP_DIR)/rle_decomp.xo
+# BINARY_CONTAINER_rle_OBJS += $(TEMP_DIR)/rle_packer.xo
 ############################## Setting Targets ##############################
 CP = cp -rf
 
@@ -126,19 +126,19 @@ build: check-vitis check-device $(BINARY_CONTAINERS)
 xclbin: build
 
 ############################## Setting Rules for Binary Containers (Building Kernels) ##############################
-$(TEMP_DIR)/rle_packer.xo: src/rle_packer.cpp
+# $(TEMP_DIR)/rle_packer.xo: src/rle_packer.cpp
+# 	mkdir -p $(TEMP_DIR)
+# 	$(VPP) $(VPP_FLAGS) -c -k rle_packer --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
+$(TEMP_DIR)/lz77_comp.xo: src/lz77_encode.cpp
 	mkdir -p $(TEMP_DIR)
-	$(VPP) $(VPP_FLAGS) -c -k rle_packer --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
-$(TEMP_DIR)/rle_comp.xo: src/rle_comp.cpp
-	mkdir -p $(TEMP_DIR)
-	$(VPP) $(VPP_FLAGS) -c -k rle_comp --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
-$(TEMP_DIR)/rle_decomp.xo: src/rle_decomp.cpp
-	mkdir -p $(TEMP_DIR)
-	$(VPP) $(VPP_FLAGS) -c -k rle_decomp --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
-$(BUILD_DIR)/rle.xclbin: $(BINARY_CONTAINER_rle_OBJS)
+	$(VPP) $(VPP_FLAGS) -c -k lz77_encode --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
+# $(TEMP_DIR)/rle_decomp.xo: src/rle_decomp.cpp
+# 	mkdir -p $(TEMP_DIR)
+# 	$(VPP) $(VPP_FLAGS) -c -k rle_decomp --temp_dir $(TEMP_DIR)  -I'$(<D)' -o'$@' '$<'
+$(BUILD_DIR)/lz77.xclbin: $(BINARY_CONTAINER_lz77_OBJS)
 	mkdir -p $(BUILD_DIR)
-	$(VPP) $(VPP_FLAGS) -l $(VPP_LDFLAGS) --temp_dir $(TEMP_DIR) -o'$(BUILD_DIR)/rle.link.xclbin' $(+)
-	$(VPP) -p $(BUILD_DIR)/rle.link.xclbin -t $(TARGET) --platform $(PLATFORM) --package.out_dir $(PACKAGE_OUT) -o $(BUILD_DIR)/rle.xclbin
+	$(VPP) $(VPP_FLAGS) -l $(VPP_LDFLAGS) --temp_dir $(TEMP_DIR) -o'$(BUILD_DIR)/lz77.link.xclbin' $(+)
+	$(VPP) -p $(BUILD_DIR)/lz77.link.xclbin -t $(TARGET) --platform $(PLATFORM) --package.out_dir $(PACKAGE_OUT) -o $(BUILD_DIR)/lz77.xclbin
 
 ############################## Setting Rules for Host (Building Host Executable) ##############################
 $(EXECUTABLE): $(HOST_SRCS) | check-xrt

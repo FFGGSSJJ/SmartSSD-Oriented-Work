@@ -64,3 +64,21 @@ mem_wt1:
     }
     
 }
+
+
+/**
+ * @brief write the token into the compression block in local memory
+ * 
+ * @param t token
+ * @param out compression block in local memory
+ * @param token_cnt
+ */
+void write_blk(struct token* t, uint8_t* out, int token_cnt)
+{
+    int token_id = token_cnt - 1;
+    int offset = 2; // first 2 bytes store the header
+    
+    out[token_id*3 + offset + 0] = (uint8_t)(t->off & OFF_MASK_0);
+    out[token_id*3 + offset + 1] = (uint8_t)(((t->off<<8) & OFF_MASK_1) | ((t->len & LEN_MASK)>>4));
+    out[token_id*3 + offset + 2] = (uint8_t)(t->next);
+}

@@ -30,6 +30,7 @@ static void sub_lz77_encode(uint8_t* orgData, uint8_t* compData, int la, int sw)
     int la_size, sw_size = 0;    /* actual lookahead and search buffer size */
     int buff_size = PAGE_SIZE;   /* buff size is always the same as PAGE_SIZE */
     int sw_index = 0, la_index = 0;
+    int token_cnt = 0;
     
     /* set window parameters */
     int LA_SIZE = (la == -1) ? DEFAULT_LA_SIZE : la;
@@ -42,16 +43,19 @@ static void sub_lz77_encode(uint8_t* orgData, uint8_t* compData, int la, int sw)
     /* set lookahead's size */
     la_size = (buff_size > LA_SIZE) ? LA_SIZE : buff_size;
 
+    /* write 2-byte header into compress block */
+    compData[0] = (uint8_t)((LA_SIZE & 0xF000) | (SW_SIZE & 0xF000)>>4);
+    compData[1] = (uint8_t)((SW_SIZE & 0x0FF0)<<4);
+
     while(buff_size > 0){
 		
         /* find the longest match of the lookahead in the tree*/
         t = find(lz77tree, root, orgData, la_index, la_size);
+        token_cnt++;
         
-        /* TODO */
         /* put the token in the compress blk */
-        
-        
-        
+        write_blk(&t, compData, token_cnt);
+
         /* read as many bytes as matched in the previous iteration */
         for(i = 0; i < t.len + 1; i++){
             
@@ -73,9 +77,6 @@ static void sub_lz77_encode(uint8_t* orgData, uint8_t* compData, int la, int sw)
             la_size = (buff_size > LA_SIZE) ? LA_SIZE : buff_size;
         }
 	}
-
-
-
 
     return;
 }
