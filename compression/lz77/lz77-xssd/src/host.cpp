@@ -436,7 +436,7 @@ int main(int argc, char** argv)
     parser.addSwitch("--direction", "-c", "1 for compression or 0 for decompression", "1");
     parser.addSwitch("--device", "-d", "device id", "0");
     parser.parse(argc, argv);
-    if (argc < 9) {
+    if (argc < 3) {
         parser.printHelp();
         return EXIT_FAILURE;
     }
