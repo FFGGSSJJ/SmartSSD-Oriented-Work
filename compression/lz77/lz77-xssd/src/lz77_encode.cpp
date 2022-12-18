@@ -133,8 +133,8 @@ void lz77_encode(uint8_t* original, uint8_t* compressed, int size, int la, int s
     /* local blocks */
     uint8_t origBlock[PAGE_SIZE];
     uint8_t compBlock[PAGE_SIZE];
-#pragma HLS ARRAY_PARTITION variable = origBlock dim = 0 complete
-#pragma HLS ARRAY_PARTITION variable = compBlock dim = 0 complete
+// #pragma HLS ARRAY_PARTITION variable = origBlock dim = 0 complete
+// #pragma HLS ARRAY_PARTITION variable = compBlock dim = 0 complete
 
     hls::stream<int, 2> encodedBlkSize;
 
