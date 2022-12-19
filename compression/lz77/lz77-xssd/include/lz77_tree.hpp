@@ -24,9 +24,9 @@
  */
 struct node
 {
-    int len, off;
-    int parent;
-    int left, right;
+    int16_t len, off;
+    int16_t parent;
+    int16_t left, right;
 };
 
 /**
@@ -34,7 +34,7 @@ struct node
  * 
  */
 struct ret{
-    int off, len;
+    int16_t off, len;
 };
 
 
