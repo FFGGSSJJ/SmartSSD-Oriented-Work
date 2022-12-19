@@ -72,7 +72,7 @@ LAUNCH_EMULATOR = $(PACKAGE_OUT)/launch_$(TARGET).sh
 RESULT_STRING = TEST PASSED
 
 VPP := v++
-VPP_PFLAGS :=
+VPP_FLAGS :=
 CMD_ARGS = -x $(BUILD_DIR)/lz77.xclbin
 
 include $(XF_PROJ_ROOT)/common/includes/opencl/opencl.mk

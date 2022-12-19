@@ -65,7 +65,7 @@ void encode(FILE *file, struct bitFILE *out, int la, int sb)
     /* set window parameters */
     LA_SIZE = (la == -1) ? DEFAULT_LA_SIZE : la;
     SB_SIZE = (sb == -1) ? DEFAULT_SB_SIZE : sb;
-    WINDOW_SIZE = (SB_SIZE * N) + LA_SIZE;
+    WINDOW_SIZE = 4096;
     
     window = calloc(WINDOW_SIZE, sizeof(unsigned char));
     
@@ -115,24 +115,24 @@ void encode(FILE *file, struct bitFILE *out, int la, int sb)
             
             if (eof == 0){
                 /* scroll backward the buffer when it is almost full */
-                if (sb_index == SB_SIZE * (N - 1)){
-                    printf("hit sb_index == SB_SIZE * (N - 1)\n");
-                    memmove(window, &(window[sb_index]), sb_size+la_size);
+                // if (sb_index == SB_SIZE * (N - 1)){
+                //     printf("hit sb_index == SB_SIZE * (N - 1)\n");
+                //     memmove(window, &(window[sb_index]), sb_size+la_size);
                     
-                    /* update the node's offset when the buffer is scrolled */
-                    updateOffset(tree, sb_index, SB_SIZE);
+                //     /* update the node's offset when the buffer is scrolled */
+                //     updateOffset(tree, sb_index, SB_SIZE);
                     
-                    sb_index = 0;
-                    la_index = sb_size;
+                //     sb_index = 0;
+                //     la_index = sb_size;
                     
-                    /* read from file */
-                    buff_size += fread(&(window[sb_size+la_size]), 1, WINDOW_SIZE-(sb_size+la_size), file);
-                    if(ferror(file)) {
-                        printf("Error loading the data in the window.\n");
-                        return;
-                    }
-                    eof = feof(file);
-                }
+                //     /* read from file */
+                //     buff_size += fread(&(window[sb_size+la_size]), 1, WINDOW_SIZE-(sb_size+la_size), file);
+                //     if(ferror(file)) {
+                //         printf("Error loading the data in the window.\n");
+                //         return;
+                //     }
+                //     eof = feof(file);
+                // }
             }
             
             buff_size--;
