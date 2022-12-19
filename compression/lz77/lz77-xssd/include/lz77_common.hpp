@@ -109,6 +109,8 @@ void write_blk(struct token* t, uint8_t* out, int token_cnt)
 {
     int token_id = token_cnt - 1;
     int offset = 2; // first 2 bytes store the header
+
+    if (token_cnt*3 + offset >= PAGE_SIZE)  return;
     
     out[token_id*3 + offset + 0] = (uint8_t)(t->off & OFF_MASK_0);
     out[token_id*3 + offset + 1] = (uint8_t)(((t->off<<8) & OFF_MASK_1) | ((t->len & LEN_MASK)>>4));

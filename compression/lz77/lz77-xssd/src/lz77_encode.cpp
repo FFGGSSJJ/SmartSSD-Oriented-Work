@@ -79,21 +79,21 @@ static void sub_lz77_encode(uint8_t* orgData, uint8_t* compData, int la, int sw,
         for(i = 0; i < t.len + 1; i++){
             
             /* if sliding window grows to SW_SIZE, the oldest node (left-most byte) is removed from the tree */
-            if(sw_size == SW_SIZE){
-                delete_node(lz77tree, &root, orgData, sw_index, SW_SIZE);
-                sw_index++;
-            }else
-                sw_size++;
+            // if(sw_size == SW_SIZE){
+            //     delete_node(lz77tree, &root, orgData, sw_index, SW_SIZE);
+            //     sw_index++;
+            // }else
+            //     sw_size++;
             
             /* insert a new node in the tree */
-            insert(lz77tree, &root, orgData, la_index, la_size, SW_SIZE);
-            la_index++;
+            // insert(lz77tree, &root, orgData, la_index, la_size, SW_SIZE);
+            // la_index++;
             
             /* reduce buff size */
             buff_size--;
             
             /* case where we hit the end of the page before filling lookahead */
-            la_size = (buff_size > LA_SIZE) ? LA_SIZE : buff_size;
+            // la_size = (buff_size > LA_SIZE) ? LA_SIZE : buff_size;
         }
 	}
 
