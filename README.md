@@ -2,7 +2,24 @@
 
 # SmartSSD Research
 
-## Intro
+## Statement
+
+In around May 2022, I started to work at ***SmartSSD*** related project at UIUC FAST lab, instructed by Prof. Nam Sun Kim and his Ph.D candidates. I started everything as a fresh man and without any prior knowledge about ***High-Level Synthesis (HLS)***. It is also my first time experience with frameworks like ***Vitis*** and ***Vivid***, and I started to learn these by myself. This repo was built at first for a specific task, but laster on it stored many example programs and performance test codes. These gradually turned into a reference for some other beginners as I received some emails from others for SmartSSD related questions. As a freshman myself, I was not able to answer those questions, but I can provide some materials I refered to when I started. 
+
+- [Xilinx Vitis Tutorial](https://github.com/Xilinx/Vitis-Tutorials)
+- [Xilinx Run Time Doc](https://xilinx.github.io/XRT/2022.1/html/index.html)
+
+- [Xilinx Run Time package](https://github.com/Xilinx/XRT)
+- [HLS Book](https://github.com/KastnerRG/pp4fpgas)
+  - it is an ***excellent*** work which have detailed intro to HLS with examples by diving into codes and explaining how optimization works. I found it after I stop my work, but I still read through it as it solved a lot of confusions I had.
+
+- [HLS Library](https://github.com/definelicht/hlslib)
+  - it collects hls library code. 
+- [LZ4 on SmartSSD](https://github.com/xuluna/smartssd)
+
+Due to my personal reasons, I cannot continue my work at UIUC fast lab. It might be my last time updating this repo, but I hope it is helpful.
+
+## Intro of Repo
 
 This research lasts for 3 stages:
 
